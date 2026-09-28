@@ -380,7 +380,7 @@ class _LiveDemoPageState extends State<LiveDemoPage> {
         const SizedBox(height: 12),
         if (!_reportFacts)
           MatchSquadEditor(
-            lineup: _kickoffLineup ?? _lineup,
+            lineup: _lineup,
             editable: false,
             timesBenched: _substituteCounts,
             onDroppedOnSlot: (_, __) {},
@@ -515,7 +515,7 @@ class _LiveDemoPageState extends State<LiveDemoPage> {
       _session = _copySession(
         state: MatchLiveState.paused,
         elapsedSeconds: elapsed,
-        runningSince: null,
+        clearRunningSince: true,
       );
     });
   }
@@ -570,7 +570,7 @@ class _LiveDemoPageState extends State<LiveDemoPage> {
       _session = _copySession(
         state: MatchLiveState.halftime,
         elapsedSeconds: planned * 30,
-        runningSince: null,
+        clearRunningSince: true,
       );
     });
   }
@@ -598,7 +598,7 @@ class _LiveDemoPageState extends State<LiveDemoPage> {
       _session = _copySession(
         state: MatchLiveState.finished,
         elapsedSeconds: _elapsedSeconds(),
-        runningSince: null,
+        clearRunningSince: true,
         finishedAt: DateTime.now(),
       );
     });
@@ -1133,6 +1133,12 @@ class _LiveDemoPageState extends State<LiveDemoPage> {
       _lineup = _lineup.copyWith(entries: [..._lineup.entries, entry]);
       if (_session.state != MatchLiveState.notStarted) {
         _substituteCounts[id] = 1;
+        final kickoff = _kickoffLineup;
+        if (kickoff != null) {
+          _kickoffLineup = kickoff.copyWith(
+            entries: [...kickoff.entries, entry],
+          );
+        }
       }
     });
     _showMessage('Joueur ajouté directement sur le banc.');
