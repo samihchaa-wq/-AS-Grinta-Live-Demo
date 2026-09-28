@@ -1,5 +1,9 @@
 name: Build and deploy Flutter Web demo
-# Publie la démo sur GitHub Pages à chaque mise à jour de main.
+# Publie la démo à chaque mise à jour de main, de deux façons :
+# - le site compilé est poussé sur la branche `site` (GitHub Pages en mode
+#   « Deploy from a branch ») ;
+# - puis déployé directement sur GitHub Pages (mode « GitHub Actions »).
+# Une seule des deux est utilisée selon le réglage Settings → Pages.
 
 on:
   push:
@@ -7,12 +11,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: pages
+  group: demo-static-build
   cancel-in-progress: true
 
 jobs:
@@ -39,12 +43,27 @@ jobs:
         run: flutter analyze
 
       - name: Build Web
-        run: flutter build web --release --pwa-strategy=none --no-web-resources-cdn --base-href "/-AS-Grinta-Live-Demo/"
+        run: |
+          flutter build web --release --pwa-strategy=none --no-web-resources-cdn --base-href "/-AS-Grinta-Live-Demo/"
+          sed -i 's#<base href="/-AS-Grinta-Live-Demo/">#<base href="./">#' build/web/index.html
+
+      - name: Publish compiled site branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build/web
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b site
+          git add -A
+          git commit -m "Publish Flutter Web demo"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin site
+          rm -rf .git
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
