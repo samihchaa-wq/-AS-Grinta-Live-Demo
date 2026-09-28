@@ -1,0 +1,11 @@
+{
+  "name": "AS Grinta · Tableau Blanc",
+  "short_name": "Tableau Blanc",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#041224",
+  "theme_color": "#041224",
+  "description": "Démo Flutter Web isolée du module Live AS Grinta",
+  "orientation": "portrait-primary",
+  "icons": []
+}
