@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:as_grinta/core/theme/app_spacing.dart';
 import 'package:as_grinta/core/utils/app_formats.dart';
 import 'package:as_grinta/core/widgets/grinta_loader.dart';
