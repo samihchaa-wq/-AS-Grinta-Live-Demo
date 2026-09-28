@@ -1,4 +1,4 @@
-part of 'live_demo_page.dart';
+part of 'match_live_running_page.dart';
 
 class _LiveTopBar extends StatelessWidget {
   const _LiveTopBar({
@@ -223,37 +223,31 @@ class _LiveMatchControls extends StatelessWidget {
   }
 }
 
-class _ScoreCard extends StatelessWidget {
-  const _ScoreCard({
-    required this.bundle,
-    required this.canEdit,
-    required this.opponentName,
-    required this.grintaIsHome,
-    required this.onUsIncrement,
-    required this.onUsDecrement,
-    required this.onThemIncrement,
-    required this.onThemDecrement,
-  });
+class _ScoreCard extends ConsumerWidget {
+  const _ScoreCard({required this.bundle, required this.canEdit});
 
   final MatchLiveStateBundle bundle;
   final bool canEdit;
-  final String opponentName;
-  final bool grintaIsHome;
-  final VoidCallback onUsIncrement;
-  final VoidCallback onUsDecrement;
-  final VoidCallback onThemIncrement;
-  final VoidCallback onThemDecrement;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matchId = bundle.session.matchId;
+    final controller = ref.read(matchLiveStateProvider(matchId).notifier);
+    final fixture =
+        ref.watch(upcomingMatchFixtureProvider(matchId)).valueOrNull;
+    final opponentName = fixture?.opponentName ?? 'Adversaire';
+    final grintaIsHome = fixture?.grintaIsHome ?? true;
+
     final home = _ScoreTeamControl(
       label: grintaIsHome ? 'AS Grinta' : opponentName,
       score: grintaIsHome
           ? bundle.session.scoreAsGrinta
           : bundle.session.scoreAdverse,
       canEdit: canEdit,
-      onIncrement: grintaIsHome ? onUsIncrement : onThemIncrement,
-      onDecrement: grintaIsHome ? onUsDecrement : onThemDecrement,
+      onIncrement: () =>
+          controller.adjustScore(team: grintaIsHome ? 'us' : 'them', delta: 1),
+      onDecrement: () =>
+          controller.adjustScore(team: grintaIsHome ? 'us' : 'them', delta: -1),
     );
     final away = _ScoreTeamControl(
       label: grintaIsHome ? opponentName : 'AS Grinta',
@@ -261,8 +255,10 @@ class _ScoreCard extends StatelessWidget {
           ? bundle.session.scoreAdverse
           : bundle.session.scoreAsGrinta,
       canEdit: canEdit,
-      onIncrement: grintaIsHome ? onThemIncrement : onUsIncrement,
-      onDecrement: grintaIsHome ? onThemDecrement : onUsDecrement,
+      onIncrement: () =>
+          controller.adjustScore(team: grintaIsHome ? 'them' : 'us', delta: 1),
+      onDecrement: () =>
+          controller.adjustScore(team: grintaIsHome ? 'them' : 'us', delta: -1),
     );
 
     return Card(
@@ -585,6 +581,7 @@ enum _JournalAction { scorer, assist, delete }
 
 class _LiveJournal extends StatelessWidget {
   const _LiveJournal({
+    super.key,
     required this.events,
     required this.expanded,
     required this.canEdit,
@@ -852,3 +849,18 @@ class _JournalEventRow extends StatelessWidget {
   }
 }
 
+class _Message extends StatelessWidget {
+  const _Message({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(message, textAlign: TextAlign.center),
+      ),
+    );
+  }
+}

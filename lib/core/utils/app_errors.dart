@@ -1,0 +1,214 @@
+import 'package:as_grinta/core/logging/error_category.dart';
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Erreur dont le message est déjà rédigé pour l'utilisateur, en français :
+/// il est affiché tel quel.
+class UserFacingError extends StateError {
+  UserFacingError(super.message);
+}
+
+/// Convertit l'échec d'une fonction serveur (statut hors 2xx) en message
+/// affichable.
+///
+/// `functions_client` lève [FunctionsHttpException] avant que l'application
+/// puisse lire la réponse : l'explication précise du serveur (« Trop de
+/// tentatives… », règle du mot de passe…) était alors remplacée par un
+/// message générique. Le champ `error` du corps JSON est repris quand il est
+/// en français ; sinon, [fallback].
+UserFacingError functionHttpError(
+  FunctionsHttpException error, {
+  required String fallback,
+}) {
+  final details = error.details;
+  final message = details is Map ? details['error']?.toString().trim() : null;
+  if (message != null && message.isNotEmpty && looksFrench(message)) {
+    return UserFacingError(message);
+  }
+  return UserFacingError(fallback);
+}
+
+const _frenchWords = {
+  'au',
+  'aux',
+  'ce',
+  'de',
+  'des',
+  'du',
+  'est',
+  'et',
+  'la',
+  'le',
+  'les',
+  'moins',
+  'ne',
+  'ou',
+  'pas',
+  'plus',
+  'pour',
+  'ta',
+  'tes',
+  'ton',
+  'un',
+  'une',
+};
+
+/// Vrai si [text] est rédigé en français : une lettre accentuée ou une
+/// apostrophe typographique, ou un mot courant du français. Les messages
+/// techniques du serveur (« Valid user id is required ») sont en anglais.
+@visibleForTesting
+bool looksFrench(String text) {
+  if (RegExp('[àâäçéèêëîïôöùûüÿœæÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸŒÆ’«»]').hasMatch(text)) {
+    return true;
+  }
+  return text.toLowerCase().split(RegExp('[^a-z]+')).any(_frenchWords.contains);
+}
+
+/// Traduit une erreur technique (PostgREST, Postgres, Auth…) en un message
+/// clair et rassurant pour l'utilisateur. On ne montre jamais de trace brute
+/// du type « PostgrestException(message: …, code: 23505) ».
+String humanizeError(Object? error) {
+  if (error == null) {
+    return 'Une erreur est survenue. Réessaie dans un instant.';
+  }
+  if (error is UserFacingError) return error.message;
+  // Une coupure réseau doit se dire avant tout le reste. Reconnue trop tard,
+  // elle ressortait en « Vérifie ton identifiant et ton mot de passe » pendant
+  // une connexion, ou en message générique partout ailleurs.
+  if (isNetworkFailure(error)) {
+    return 'Connexion au serveur impossible. Vérifie ton réseau.';
+  }
+  if (error is String) return _fromMessage(error);
+  if (error is StateError) return _fromMessage(error.message);
+  if (error is ArgumentError) {
+    return _fromMessage(error.message?.toString() ?? '');
+  }
+  if (error is AuthException) {
+    return 'Connexion impossible. Vérifie ton identifiant et ton mot de passe.';
+  }
+  if (error is PostgrestException) {
+    switch (error.code) {
+      case '23505':
+        return 'Cet élément existe déjà.';
+      case '23503':
+        return 'Action impossible : cet élément est encore utilisé ailleurs.';
+      case 'PGRST116':
+        return 'Ce contenu est introuvable ou a été supprimé.';
+      case '40001':
+        return 'Un autre administrateur a modifié cet écran entre-temps. '
+            'Recharge la page avant d’enregistrer.';
+    }
+    return _fromMessage(error.message);
+  }
+  return _fromMessage(error.toString());
+}
+
+/// Associe les messages connus (souvent levés par les fonctions SQL en
+/// anglais) à un libellé français. Par défaut, renvoie un message générique
+/// plutôt que d'exposer un texte technique.
+String _fromMessage(String raw) {
+  final message = raw.trim();
+  if (message.isEmpty) {
+    return 'Une erreur est survenue. Réessaie dans un instant.';
+  }
+  final lower = message.toLowerCase();
+
+  const knownFrench = [
+    'mot de passe',
+    'identifiant',
+    'saison',
+    'adversaire',
+    'cote',
+    'match',
+    'joueur',
+    'badge',
+    'arborer',
+    'obligatoire',
+    'invalide',
+    'droits',
+    'administrateur',
+    'composition',
+    'effectif',
+    'notification',
+    'indisponibilité',
+    'période',
+    'raison',
+  ];
+
+  final patterns = <String, String>{
+    'admin role required': 'Action réservée à l’administrateur.',
+    'staff role required': 'Action réservée au staff.',
+    'admin or moderator role required': 'Action réservée au staff.',
+    'last active administrator':
+        'Impossible : c’est le dernier administrateur actif.',
+    'last active admin': 'Impossible : c’est le dernier administrateur actif.',
+    'cannot delete your own account':
+        'Tu ne peux pas supprimer ton propre compte.',
+    'historical import actor': 'Ce compte technique ne peut pas être supprimé.',
+    'target account not found': 'Ce compte est introuvable.',
+    'only upcoming or finished matches': 'Ce match ne peut plus être modifié.',
+    'cannot be finalized before kickoff':
+        'Démarre puis termine le match dans le Tableau Blanc avant de le valider.',
+    'end the match before exporting':
+        'Termine le match avant d’exporter le compte rendu.',
+    'already been exported': 'Ce match a déjà été exporté.',
+    'the match is not currently live': 'Le match n’est pas en cours.',
+    'coach or administrator role required':
+        'Action réservée au coach ou à l’administrateur.',
+    'administrator role required': 'Action réservée à l’administrateur.',
+    'only a moderator can grant or revoke the moderator role':
+        'Seul un modérateur peut nommer ou retirer un modérateur.',
+    'the last active moderator cannot be removed':
+        'Il doit rester au moins un modérateur actif.',
+    'moderator role required': 'Action réservée au modérateur.',
+    'live tracking is only available for upcoming matches':
+        'Le Tableau Blanc n’est disponible que pour les prochains matchs.',
+    'no published composition to start from':
+        'Publie d’abord la composition du match pour ouvrir le Tableau Blanc.',
+    'player is not waiting for an availability response':
+        'Ce joueur n’attend pas de réponse de disponibilité pour ce match.',
+    'season squad': 'Ce joueur ne fait pas partie de l’effectif de la saison.',
+    // L'effectif s'enregistre à chaque décision : l'écran peut avoir une
+    // demi-longueur de retard sur une réponse de joueur arrivée entre-temps.
+    'effectif decision':
+        'L’effectif a changé entre-temps. L’écran vient d’être '
+            'remis à jour : refais ta décision.',
+    'effectif can only be edited before kickoff':
+        'L’effectif ne peut plus changer : le match a commencé.',
+    'valeur de pronostic hors limites':
+        'Le pronostic dépasse la limite autorisée : 99 buts ou 30 clean sheets maximum.',
+    'prediction value out of range':
+        'Le pronostic dépasse la limite autorisée : 99 buts ou 30 clean sheets maximum.',
+    'only a goalkeeper': 'Seul un gardien peut avoir un clean sheet.',
+    'clean sheet is impossible':
+        'Un clean sheet est impossible si l’adversaire a marqué.',
+    'assists cannot exceed goals':
+        'Le nombre de passes décisives ne peut pas dépasser le nombre de buts.',
+    'motm must be a present player':
+        'L’homme du match doit être un joueur présent.',
+    'absent players cannot have statistics':
+        'Un joueur absent ne peut pas avoir de statistiques.',
+    'absent guests cannot have statistics':
+        'Un invité absent ne peut pas avoir de statistiques.',
+    'guest names must be present and unique':
+        'Les noms des invités doivent être renseignés et uniques.',
+    'negative statistics': 'Les statistiques ne peuvent pas être négatives.',
+    'duplicate': 'Cet élément existe déjà.',
+    'row-level security': 'Tu n’as pas les droits pour cette action.',
+    'permission denied': 'Tu n’as pas les droits pour cette action.',
+    'jwt expired': 'Ta session a expiré. Reconnecte-toi.',
+    'failed host lookup':
+        'Connexion au serveur impossible. Vérifie ton réseau.',
+    'socketexception': 'Connexion au serveur impossible. Vérifie ton réseau.',
+    'timeoutexception': 'Le serveur met trop de temps à répondre. Réessaie.',
+  };
+
+  for (final entry in patterns.entries) {
+    if (lower.contains(entry.key)) return entry.value;
+  }
+
+  // Message déjà rédigé en français par l'application : on le garde tel quel.
+  if (knownFrench.any(lower.contains)) return message;
+
+  return 'Une erreur est survenue. Réessaie dans un instant.';
+}

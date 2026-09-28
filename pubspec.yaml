@@ -1,14 +1,26 @@
 name: as_grinta
-description: Démo Flutter Web isolée du Tableau Blanc AS Grinta.
+description: Démo isolée du module Live AS Grinta (aucune connexion à Supabase).
 publish_to: "none"
 version: 1.0.0+1
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
 
+# Mêmes versions que l'application : les écrans copiés doivent se comporter à
+# l'identique. supabase_flutter n'est présent que parce que les fichiers copiés
+# l'importent ; la démo ne l'initialise jamais et la page interdit tout appel
+# réseau vers Supabase (Content-Security-Policy de web/index.html).
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  go_router: ^16.2.4
+  share_plus: ^10.1.4
+  shared_preferences: ^2.5.3
+  supabase_flutter: ^2.8.4
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +29,18 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/as_grinta_logo.webp
+
+  fonts:
+    - family: Oswald
+      fonts:
+        - asset: assets/fonts/Oswald-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Oswald-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Oswald-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Oswald-Bold.ttf
+          weight: 700

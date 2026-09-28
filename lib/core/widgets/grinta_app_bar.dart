@@ -1,0 +1,194 @@
+import 'dart:ui';
+
+import 'package:as_grinta/core/theme/app_spacing.dart';
+import 'package:as_grinta/core/theme/app_theme.dart';
+import 'package:as_grinta/core/widgets/admin_badge.dart';
+import 'package:as_grinta/features/badges/presentation/badge_trophy_button.dart';
+import 'package:as_grinta/features/season_wrapped/presentation/season_wrapped_entry_button.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+/// Clé stable du badge club qui ramène au calendrier.
+const grintaClubHomeBadgeKey = ValueKey<String>('club-home-badge');
+
+/// Barre supérieure commune de l'application.
+class GrintaAppBar extends AppBar {
+  GrintaAppBar({
+    required Widget title,
+    super.key,
+    List<Widget>? actions,
+    bool admin = false,
+    super.bottom,
+  }) : super(
+          toolbarHeight: 60,
+          titleSpacing: 0,
+          centerTitle: false,
+          flexibleSpace: const _HeaderBackdrop(),
+          title: _GrintaTitleBar(
+            pageName: title,
+            actions: actions,
+            admin: admin,
+          ),
+        );
+}
+
+void _returnToCalendar(BuildContext context) {
+  final router = GoRouter.of(context);
+  final navigator = Navigator.of(context);
+
+  // Les écrans ouverts directement avec Navigator.push(MaterialPageRoute(...))
+  // ne font pas partie de la pile déclarative de GoRouter. Si le routeur est
+  // déjà sur /matches derrière eux, router.go('/matches') est donc un no-op et
+  // l'écran impératif reste visible. On retire uniquement ces routes pageless
+  // avant d'effectuer la navigation absolue vers le Calendrier.
+  navigator.popUntil((route) => route.settings is Page || route.isFirst);
+  router.go('/matches');
+}
+
+/// Badge AS Grinta réutilisable pour les en-têtes hors [GrintaAppBar].
+///
+/// Sa destination est volontairement absolue : quel que soit l'historique de
+/// navigation, un appui revient toujours à la racine Calendrier.
+class GrintaClubHomeButton extends StatelessWidget {
+  const GrintaClubHomeButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Retour au calendrier',
+      child: Tooltip(
+        message: 'Retour au calendrier',
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkResponse(
+            key: grintaClubHomeBadgeKey,
+            onTap: () => _returnToCalendar(context),
+            radius: 24,
+            containedInkWell: true,
+            child: SizedBox(
+              width: 48,
+              height: 48,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Image.asset(
+                  'assets/images/as_grinta_logo.webp',
+                  height: 42,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderBackdrop extends StatelessWidget {
+  const _HeaderBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppTheme.surface.withValues(alpha: .94),
+                AppTheme.surface.withValues(alpha: .74),
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: AppTheme.accent.withValues(alpha: .22),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrintaTitleBar extends StatelessWidget {
+  const _GrintaTitleBar({
+    required this.pageName,
+    this.actions,
+    this.admin = false,
+  });
+
+  final Widget pageName;
+  final List<Widget>? actions;
+  final bool admin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenGutter,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const GrintaClubHomeButton(),
+          const SizedBox(width: AppSpacing.contentGap),
+          Expanded(
+            child: DefaultTextStyle.merge(
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.left,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -.3,
+                  ),
+              child: pageName,
+            ),
+          ),
+          if (admin || (actions?.isNotEmpty ?? false)) ...[
+            const SizedBox(width: 6),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 44),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (admin) ...[
+                    const AdminBadge(),
+                    if (actions != null && actions!.isNotEmpty)
+                      const SizedBox(width: AppSpacing.microGap),
+                  ],
+                  ...?actions,
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+List<Widget> grintaHomeActions(BuildContext context) => [
+      const SeasonWrappedEntryButton(),
+      const BadgeTrophyButton(),
+      const SizedBox(width: 2),
+      IconButton(
+        tooltip: 'Paramètres',
+        iconSize: 27,
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.all(7),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        style: IconButton.styleFrom(
+          foregroundColor: AppTheme.textSecondary,
+          backgroundColor: AppTheme.surfaceHigh.withValues(alpha: .46),
+        ),
+        icon: const Icon(Icons.settings_outlined),
+        onPressed: () => context.push('/more'),
+      ),
+    ];

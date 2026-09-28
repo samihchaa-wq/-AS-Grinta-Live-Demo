@@ -1,5 +1,5 @@
 name: Build and deploy Flutter Web demo
-# Triggered on each demo update.
+# Publie la démo sur GitHub Pages à chaque mise à jour de main.
 
 on:
   push:
@@ -39,7 +39,7 @@ jobs:
         run: flutter analyze
 
       - name: Build Web
-        run: flutter build web --release --base-href "/-AS-Grinta-Live-Demo/"
+        run: flutter build web --release --pwa-strategy=none --no-web-resources-cdn --base-href "/-AS-Grinta-Live-Demo/"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
