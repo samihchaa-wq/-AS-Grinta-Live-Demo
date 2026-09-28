@@ -585,7 +585,6 @@ enum _JournalAction { scorer, assist, delete }
 
 class _LiveJournal extends StatelessWidget {
   const _LiveJournal({
-    super.key,
     required this.events,
     required this.expanded,
     required this.canEdit,
@@ -853,18 +852,3 @@ class _JournalEventRow extends StatelessWidget {
   }
 }
 
-class _Message extends StatelessWidget {
-  const _Message({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(message, textAlign: TextAlign.center),
-      ),
-    );
-  }
-}
