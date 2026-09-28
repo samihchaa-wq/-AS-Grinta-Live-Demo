@@ -1,5 +1,4 @@
-name: Build and deploy Flutter Web demo
-# Triggered on each demo update.
+name: Build Flutter Web demo
 
 on:
   push:
@@ -7,20 +6,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: pages
+  group: demo-static-build
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,18 +33,20 @@ jobs:
         run: flutter analyze
 
       - name: Build Web
-        run: flutter build web --release --base-href "/-AS-Grinta-Live-Demo/"
+        run: |
+          flutter build web --release --base-href "/-AS-Grinta-Live-Demo/"
+          sed -i 's#<base href="/-AS-Grinta-Live-Demo/">#<base href="./">#' build/web/index.html
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
-      - name: Deploy Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish compiled site branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd build/web
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b site
+          git add -A
+          git commit -m "Publish Flutter Web demo"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin site
