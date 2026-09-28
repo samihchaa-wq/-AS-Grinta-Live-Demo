@@ -1,4 +1,5 @@
 name: Build and deploy Flutter Web demo
+# Triggered on each demo update.
 
 on:
   push:
