@@ -203,6 +203,7 @@ class FormationPitchEditor extends StatefulWidget {
     this.benchColors = const {},
     this.namesOnly = false,
     this.nameColors = const {},
+    this.nameSuffixes = const {},
     this.markerMetrics,
   });
 
@@ -230,6 +231,9 @@ class FormationPitchEditor extends StatefulWidget {
 
   /// Couleur du prénom, par participantId (prochains à sortir, en direct).
   final Map<String, Color> nameColors;
+
+  /// Texte après le prénom, par participantId (temps de jeu en direct).
+  final Map<String, String> nameSuffixes;
 
   /// Taille imposée des marqueurs. Renseignée quand un autre bloc (le banc du
   /// Tableau Blanc) doit afficher exactement les mêmes vignettes ; sinon elle
@@ -703,7 +707,13 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
         minWidth: 0,
         maxWidth: FormationMarkerMetrics(width).nameMaxWidth,
         maxHeight: double.infinity,
-        alignment: Alignment.topCenter,
+        // Sur les côtés du terrain, l'étiquette se cale vers l'intérieur
+        // pour ne pas être coupée par le bord.
+        alignment: switch (entry.x ?? .5) {
+          < .2 => Alignment.topLeft,
+          > .8 => Alignment.topRight,
+          _ => Alignment.topCenter,
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -715,6 +725,7 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
               fontSize: fontSize * 1.15,
               color: color ?? Colors.white,
               fontWeight: color == null ? FontWeight.w400 : FontWeight.w700,
+              suffix: widget.nameSuffixes[entry.participantId],
             ),
             if (badge != null) badge,
           ],

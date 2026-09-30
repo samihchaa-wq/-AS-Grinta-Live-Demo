@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:as_grinta/core/theme/app_spacing.dart';
 import 'package:as_grinta/core/utils/app_formats.dart';
 import 'package:as_grinta/core/widgets/grinta_loader.dart';
@@ -7,6 +9,7 @@ import 'package:as_grinta/features/match_live/domain/match_live_formation.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_session.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_state_bundle.dart';
 import 'package:as_grinta/features/match_live/domain/substitution_salvos.dart';
+import 'package:as_grinta/features/match_live/domain/time_on_field.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_providers.dart';
 import 'package:as_grinta/features/sports_management/presentation/match_report_page.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/live_bench_tile.dart';
@@ -63,6 +66,26 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
   String get matchId => widget.matchId;
   MatchLiveStateBundle get bundle => widget.bundle;
   bool get canEdit => widget.canEdit;
+
+  /// Rafraîchit le temps passé sur le terrain affiché à côté des prénoms
+  /// pendant que le chrono tourne.
+  Timer? _minuteTicker;
+
+  @override
+  void initState() {
+    super.initState();
+    _minuteTicker = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && bundle.session.state == MatchLiveState.running) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _minuteTicker?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +191,14 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                       },
                   },
                   namesOnly: true,
+                  nameSuffixes: {
+                    for (final MapEntry(:key, :value) in minutesOnField(
+                      field: lineup.entriesFor(MatchCompositionZone.field),
+                      events: bundle.events,
+                      elapsed: bundle.session.elapsedAt(DateTime.now()),
+                    ).entries)
+                      key: "$value'",
+                  },
                   nameColors: {
                     for (final id in nextOut.sure) id: nextOutSureColor,
                     for (final id in nextOut.toChoose) id: nextOutToChooseColor,
