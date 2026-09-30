@@ -13,8 +13,8 @@ class _LiveHeaderBar extends ConsumerWidget {
     required this.onRestart,
     required this.onEndMatch,
     this.onlyClockAction = false,
+    this.showClockAction = true,
     this.leading,
-    this.trailing = const [],
     this.bottom,
   });
 
@@ -28,10 +28,12 @@ class _LiveHeaderBar extends ConsumerWidget {
   final VoidCallback onEndMatch;
 
   /// Mode match : seul le bouton pause / reprendre reste dans la ligne, les
-  /// autres commandes passent dans le menu « ⋯ » ([trailing]).
+  /// autres commandes passent sur la seconde ligne ([bottom]).
   final bool onlyClockAction;
+
+  /// Mode match : pause / reprendre passe sur la seconde ligne.
+  final bool showClockAction;
   final Widget? leading;
-  final List<Widget> trailing;
 
   /// Seconde ligne du bandeau (commandes occasionnelles du mode match).
   final Widget? bottom;
@@ -143,12 +145,13 @@ class _LiveHeaderBar extends ConsumerWidget {
                   ),
                   const SizedBox(width: 4),
                   if (canEdit) ...[
-                    action(
-                      tooltip: firstAction.tooltip,
-                      icon: firstAction.icon,
-                      onPressed: firstAction.callback,
-                      filled: firstAction.filled,
-                    ),
+                    if (showClockAction)
+                      action(
+                        tooltip: firstAction.tooltip,
+                        icon: firstAction.icon,
+                        onPressed: firstAction.callback,
+                        filled: firstAction.filled,
+                      ),
                     if (!onlyClockAction) ...[
                       action(
                         tooltip: 'Mi-temps',
@@ -186,10 +189,6 @@ class _LiveHeaderBar extends ConsumerWidget {
                     ),
                   ),
                   team(!grintaIsHome),
-                  if (trailing.isNotEmpty) ...[
-                    const SizedBox(width: 4),
-                    ...trailing,
-                  ],
                 ],
               ),
             ),
@@ -212,6 +211,7 @@ class _MatchModeAction extends StatelessWidget {
     required this.onPressed,
     this.tooltip,
     this.danger = false,
+    this.badgeCount = 0,
   });
 
   final IconData icon;
@@ -219,6 +219,7 @@ class _MatchModeAction extends StatelessWidget {
   final String? tooltip;
   final VoidCallback? onPressed;
   final bool danger;
+  final int badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +241,11 @@ class _MatchModeAction extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 22, color: color),
+                Badge.count(
+                  count: badgeCount,
+                  isLabelVisible: badgeCount > 0,
+                  child: Icon(icon, size: 22, color: color),
+                ),
                 const SizedBox(height: 2),
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -288,6 +293,54 @@ class _GoalToAttributeBar extends StatelessWidget {
             const SizedBox(width: 8),
             FilledButton(onPressed: onChoose, child: const Text('Choisir')),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Petit bouton du pied de la colonne du banc : icône et libellé.
+class _BenchAction extends StatelessWidget {
+  const _BenchAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = onPressed == null
+        ? scheme.onSurface.withValues(alpha: .38)
+        : scheme.onSurface;
+    return Tooltip(
+      message: tooltip ?? label,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: color),
+              const SizedBox(height: 2),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(fontSize: 11, color: color),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -399,7 +452,11 @@ class _BenchColumn extends StatelessWidget {
     required this.metrics,
     required this.pendingOutIds,
     required this.onFieldPlayerDropped,
+    this.footer,
   });
+
+  /// Actions collées en bas de la colonne (Ajouter / Retirer en mode match).
+  final Widget? footer;
 
   final List<MatchCompositionEntry> bench;
   final MatchLiveStateBundle bundle;
@@ -479,6 +536,7 @@ class _BenchColumn extends StatelessWidget {
                       },
                     ),
                   ),
+              if (footer != null) ...[const Spacer(), footer!],
             ],
           ),
         ),

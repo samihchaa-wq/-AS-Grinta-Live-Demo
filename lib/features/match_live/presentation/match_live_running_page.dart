@@ -117,6 +117,35 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                 pendingOutIds: pendingOutIds,
                 onFieldPlayerDropped: (playerOut, playerIn) =>
                     _stage(playerIn: playerIn, playerOut: playerOut),
+                footer: widget.fullScreen && canEdit
+                    ? Column(
+                        children: [
+                          _BenchAction(
+                            icon: Icons.person_add_alt_1_rounded,
+                            label: 'Ajouter',
+                            tooltip: 'Ajouter un joueur',
+                            onPressed: setupControlsDisabled
+                                ? null
+                                : () => showMatchLiveAddPlayerSheet(
+                                      context,
+                                      ref,
+                                      matchId: matchId,
+                                    ),
+                          ),
+                          _BenchAction(
+                            icon: Icons.person_remove_rounded,
+                            label: 'Retirer',
+                            tooltip: 'Retirer un joueur du banc',
+                            onPressed: setupControlsDisabled ||
+                                    lineup
+                                        .entriesFor(MatchCompositionZone.bench)
+                                        .isEmpty
+                                ? null
+                                : () => _removeBenchPlayer(lineup, controller),
+                          ),
+                        ],
+                      )
+                    : null,
               ),
               const SizedBox(width: _benchGap),
               Expanded(
@@ -327,83 +356,91 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
             onHalftime: () => _confirmHalftime(context, controller),
             onRestart: () => _confirmRestart(context, controller),
             onEndMatch: () => _confirmEndMatch(context, controller),
-            bottom: canEdit
-                ? Row(
-                    children: [
-                      _MatchModeAction(
-                        icon: Icons.sports_rounded,
-                        label: 'Mi-temps',
-                        onPressed: canGoHalftime
-                            ? () => _confirmHalftime(context, controller)
-                            : null,
+            showClockAction: false,
+            // Seconde ligne : commandes du match à gauche, consultation à
+            // droite.
+            bottom: Row(
+              children: [
+                if (canEdit) ...[
+                  _MatchModeAction(
+                    icon: Icons.sports_rounded,
+                    label: 'Mi-temps',
+                    onPressed: canGoHalftime
+                        ? () => _confirmHalftime(context, controller)
+                        : null,
+                  ),
+                  _MatchModeAction(
+                    icon: Icons.flag_rounded,
+                    label: 'Fin du match',
+                    danger: true,
+                    onPressed: () => _confirmEndMatch(context, controller),
+                  ),
+                  _MatchModeAction(
+                    icon: Icons.restart_alt_rounded,
+                    label: 'Recommencer',
+                    onPressed: () => _confirmRestart(context, controller),
+                  ),
+                  switch (session.state) {
+                    MatchLiveState.running => _MatchModeAction(
+                        icon: Icons.pause_rounded,
+                        label: 'Pause',
+                        onPressed: () => controller.setClockState('pause'),
                       ),
-                      _MatchModeAction(
-                        icon: Icons.grid_view_rounded,
-                        label: formationForCode(lineup.formationCode).code,
-                        tooltip: 'Changer de dispositif',
-                        onPressed: setupControlsDisabled
-                            ? null
-                            : () => _onMatchMenu(
-                                  context,
-                                  'formation',
-                                  lineup,
-                                  controller,
-                                ),
+                    MatchLiveState.paused => _MatchModeAction(
+                        icon: Icons.play_arrow_rounded,
+                        label: 'Reprendre',
+                        onPressed: () => controller.setClockState('resume'),
                       ),
-                      _MatchModeAction(
-                        icon: Icons.person_add_alt_1_rounded,
-                        label: 'Ajouter',
-                        tooltip: 'Ajouter un joueur',
-                        onPressed: setupControlsDisabled
-                            ? null
-                            : () => showMatchLiveAddPlayerSheet(
-                                  context,
-                                  ref,
-                                  matchId: matchId,
-                                ),
+                    MatchLiveState.halftime => _MatchModeAction(
+                        icon: Icons.play_arrow_rounded,
+                        label: '2e mi-temps',
+                        tooltip: 'Reprendre la 2e mi-temps',
+                        onPressed: () =>
+                            controller.setClockState('resume_second_half'),
                       ),
-                      _MatchModeAction(
-                        icon: Icons.person_remove_rounded,
-                        label: 'Retirer',
-                        tooltip: 'Retirer un joueur du banc',
-                        onPressed: setupControlsDisabled ||
-                                lineup
-                                    .entriesFor(MatchCompositionZone.bench)
-                                    .isEmpty
-                            ? null
-                            : () => _removeBenchPlayer(lineup, controller),
+                    _ => const _MatchModeAction(
+                        icon: Icons.pause_rounded,
+                        label: 'Pause',
+                        onPressed: null,
                       ),
-                      _MatchModeAction(
-                        icon: Icons.restart_alt_rounded,
-                        label: 'Recommencer',
-                        onPressed: () => _confirmRestart(context, controller),
-                      ),
-                      _MatchModeAction(
-                        icon: Icons.flag_rounded,
-                        label: 'Fin du match',
-                        danger: true,
-                        onPressed: () => _confirmEndMatch(context, controller),
-                      ),
-                    ],
-                  )
-                : null,
+                  },
+                  Container(
+                    width: 1,
+                    height: 36,
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    color: Theme.of(context).dividerColor,
+                  ),
+                ] else
+                  const Spacer(flex: 4),
+                _MatchModeAction(
+                  icon: Icons.receipt_long_rounded,
+                  label: 'Journal',
+                  tooltip: 'Journal du match',
+                  badgeCount: bundle.events.length,
+                  onPressed: () =>
+                      _openJournal(context, controller, scorerCandidates),
+                ),
+                if (canEdit)
+                  _MatchModeAction(
+                    icon: Icons.grid_view_rounded,
+                    label: formationForCode(lineup.formationCode).code,
+                    tooltip: 'Changer de dispositif',
+                    onPressed: setupControlsDisabled
+                        ? null
+                        : () => _onMatchMenu(
+                              context,
+                              'formation',
+                              lineup,
+                              controller,
+                            ),
+                  ),
+              ],
+            ),
             leading: IconButton(
               tooltip: 'Quitter le mode match',
               onPressed: () => Navigator.of(context).maybePop(),
               icon: const Icon(Icons.close_rounded),
             ),
-            trailing: [
-              IconButton(
-                tooltip: 'Journal du match',
-                onPressed: () =>
-                    _openJournal(context, controller, scorerCandidates),
-                icon: Badge.count(
-                  count: bundle.events.length,
-                  isLabelVisible: bundle.events.isNotEmpty,
-                  child: const Icon(Icons.receipt_long_rounded),
-                ),
-              ),
-            ],
           ),
         ),
         Expanded(
