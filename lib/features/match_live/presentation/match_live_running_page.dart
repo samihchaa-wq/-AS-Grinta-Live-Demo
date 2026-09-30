@@ -378,7 +378,8 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                   ),
                   _MatchModeAction(
                     icon: Icons.restart_alt_rounded,
-                    label: 'Recommencer',
+                    label: 'Reset',
+                    tooltip: 'Recommencer le match',
                     onPressed: () => _confirmRestart(context, controller),
                   ),
                   switch (session.state) {
