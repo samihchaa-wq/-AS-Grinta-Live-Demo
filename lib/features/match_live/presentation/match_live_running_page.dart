@@ -35,11 +35,17 @@ class MatchLiveRunningPage extends ConsumerStatefulWidget {
     required this.matchId,
     required this.bundle,
     required this.canEdit,
+    this.fullScreen = false,
   });
 
   final String matchId;
   final MatchLiveStateBundle bundle;
   final bool canEdit;
+
+  /// Mode match : l'écran occupe tout le téléphone, avec une seule ligne de
+  /// commandes en haut, le terrain au centre et les changements en attente
+  /// en bas. Les actions occasionnelles passent dans le menu « ⋯ ».
+  final bool fullScreen;
 
   @override
   ConsumerState<MatchLiveRunningPage> createState() =>
@@ -84,6 +90,86 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     final controller = ref.read(matchLiveStateProvider(matchId).notifier);
     final setupControlsDisabled =
         _saving || _savingFormation || _pending.isNotEmpty;
+
+    final pitchArea = LayoutBuilder(
+      builder: (context, constraints) {
+        final metrics = benchAndPitchMetrics(constraints.maxWidth);
+        final lastExits = lastExitMarksByParticipant(bundle.events);
+        // Prochains à sortir : calculés sur la dernière salve validée.
+        // Ils restent affichés pendant la préparation de la suivante, pour
+        // choisir parmi les joueurs en orange ceux qui restent à sortir.
+        final nextOut = nextOutPlayers(
+          field: lineup.entriesFor(MatchCompositionZone.field),
+          events: bundle.events,
+          substituteCounts: bundle.substituteCounts,
+          benchCount: lineup.entriesFor(MatchCompositionZone.bench).length,
+        );
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _BenchColumn(
+                bench: bench,
+                bundle: bundle,
+                canEdit: canEdit,
+                metrics: metrics,
+                pendingOutIds: pendingOutIds,
+                onFieldPlayerDropped: (playerOut, playerIn) =>
+                    _stage(playerIn: playerIn, playerOut: playerOut),
+              ),
+              const SizedBox(width: _benchGap),
+              Expanded(
+                child: FormationPitchEditor(
+                  slots: formationForCode(lineup.formationCode).slots,
+                  entries: field,
+                  editable: canEdit,
+                  finishedBenchCounts: bundle.substituteCounts,
+                  benchLabels: {
+                    for (final MapEntry(:key, :value)
+                        in bundle.substituteCounts.entries)
+                      key: liveBenchLabel(lastExits[key], value),
+                  },
+                  benchColors: {
+                    for (final key in bundle.substituteCounts.keys)
+                      key: switch (lastExits[key]) {
+                        final exit? =>
+                          substitutionSalvoColorAt(exit.colorIndex),
+                        null => substitutionStartColor,
+                      },
+                  },
+                  namesOnly: true,
+                  nameColors: {
+                    for (final id in nextOut.sure) id: nextOutSureColor,
+                    for (final id in nextOut.toChoose) id: nextOutToChooseColor,
+                  },
+                  markerMetrics: metrics,
+                  onDroppedOnSlot: (moving, slot) => _handlePitchDrop(
+                    context,
+                    controller,
+                    lineup,
+                    moving,
+                    slot,
+                  ),
+                  onRemoveFromField: (entry) =>
+                      _explainHowToSubstitute(context),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (widget.fullScreen) {
+      return _buildFullScreen(
+        context,
+        lineup: lineup,
+        pitchArea: pitchArea,
+        controller: controller,
+        scorerCandidates: scorerCandidates,
+        setupControlsDisabled: setupControlsDisabled,
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(
@@ -167,75 +253,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
           onEndMatch: () => _confirmEndMatch(context, controller),
         ),
         const SizedBox(height: AppSpacing.sectionGap),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final metrics = benchAndPitchMetrics(constraints.maxWidth);
-            final lastExits = lastExitMarksByParticipant(bundle.events);
-            // Prochains à sortir : calculés sur la dernière salve validée.
-            // Ils restent affichés pendant la préparation de la suivante, pour
-            // choisir parmi les joueurs en orange ceux qui restent à sortir.
-            final nextOut = nextOutPlayers(
-              field: lineup.entriesFor(MatchCompositionZone.field),
-              events: bundle.events,
-              substituteCounts: bundle.substituteCounts,
-              benchCount: lineup.entriesFor(MatchCompositionZone.bench).length,
-            );
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _BenchColumn(
-                    bench: bench,
-                    bundle: bundle,
-                    canEdit: canEdit,
-                    metrics: metrics,
-                    pendingOutIds: pendingOutIds,
-                    onFieldPlayerDropped: (playerOut, playerIn) =>
-                        _stage(playerIn: playerIn, playerOut: playerOut),
-                  ),
-                  const SizedBox(width: _benchGap),
-                  Expanded(
-                    child: FormationPitchEditor(
-                      slots: formationForCode(lineup.formationCode).slots,
-                      entries: field,
-                      editable: canEdit,
-                      finishedBenchCounts: bundle.substituteCounts,
-                      benchLabels: {
-                        for (final MapEntry(:key, :value)
-                            in bundle.substituteCounts.entries)
-                          key: liveBenchLabel(lastExits[key], value),
-                      },
-                      benchColors: {
-                        for (final key in bundle.substituteCounts.keys)
-                          key: switch (lastExits[key]) {
-                            final exit? =>
-                              substitutionSalvoColorAt(exit.colorIndex),
-                            null => substitutionStartColor,
-                          },
-                      },
-                      namesOnly: true,
-                      nameColors: {
-                        for (final id in nextOut.sure) id: nextOutSureColor,
-                        for (final id in nextOut.toChoose)
-                          id: nextOutToChooseColor,
-                      },
-                      markerMetrics: metrics,
-                      onDroppedOnSlot: (moving, slot) => _handlePitchDrop(
-                        context,
-                        controller,
-                        lineup,
-                        moving,
-                        slot,
-                      ),
-                      onRemoveFromField: (entry) =>
-                          _explainHowToSubstitute(context),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+        pitchArea,
         // Remplacements en préparation : sous le terrain, pour qu'il ne
         // descende pas à chaque joueur sélectionné.
         if (canEdit && _pending.isNotEmpty) ...[
@@ -272,6 +290,236 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
           onDelete: (event) => _confirmDeleteEvent(context, controller, event),
         ),
       ],
+    );
+  }
+
+  /// Mode match plein écran : une ligne de commandes fixe en haut, le
+  /// terrain au centre, les changements en attente dans une barre en bas.
+  Widget _buildFullScreen(
+    BuildContext context, {
+    required MatchComposition lineup,
+    required Widget pitchArea,
+    required MatchLiveStateController controller,
+    required List<MatchCompositionEntry> scorerCandidates,
+    required bool setupControlsDisabled,
+  }) {
+    final session = bundle.session;
+    final canGoHalftime =
+        session.half == 1 && session.state != MatchLiveState.halftime;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: _LiveHeaderBar(
+            bundle: bundle,
+            canEdit: canEdit,
+            onlyClockAction: true,
+            onPause: () => controller.setClockState('pause'),
+            onResume: () => controller.setClockState('resume'),
+            onResumeSecondHalf: () =>
+                controller.setClockState('resume_second_half'),
+            onHalftime: () => _confirmHalftime(context, controller),
+            onRestart: () => _confirmRestart(context, controller),
+            onEndMatch: () => _confirmEndMatch(context, controller),
+            leading: IconButton(
+              tooltip: 'Quitter le mode match',
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            trailing: [
+              IconButton(
+                tooltip: 'Journal du match',
+                onPressed: () =>
+                    _openJournal(context, controller, scorerCandidates),
+                icon: Badge.count(
+                  count: bundle.events.length,
+                  isLabelVisible: bundle.events.isNotEmpty,
+                  child: const Icon(Icons.receipt_long_rounded),
+                ),
+              ),
+              if (canEdit)
+                PopupMenuButton<String>(
+                  tooltip: 'Autres actions',
+                  icon: const Icon(Icons.more_vert_rounded),
+                  onSelected: (value) =>
+                      _onMatchMenu(context, value, lineup, controller),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'halftime',
+                      enabled: canGoHalftime,
+                      child: const ListTile(
+                        leading: Icon(Icons.sports_rounded),
+                        title: Text('Mi-temps'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'formation',
+                      enabled: !setupControlsDisabled,
+                      child: ListTile(
+                        leading: const Icon(Icons.grid_view_rounded),
+                        title: Text(
+                          'Dispositif (${formationForCode(lineup.formationCode).code})',
+                        ),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'add',
+                      enabled: !setupControlsDisabled,
+                      child: const ListTile(
+                        leading: Icon(Icons.person_add_alt_1_rounded),
+                        title: Text('Ajouter un joueur'),
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'restart',
+                      child: ListTile(
+                        leading: Icon(Icons.restart_alt_rounded),
+                        title: Text('Recommencer'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'end',
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.flag_rounded,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        title: Text(
+                          'Fin du match',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
+            child: pitchArea,
+          ),
+        ),
+        if (canEdit && _pending.isNotEmpty)
+          Material(
+            elevation: 8,
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                child: _PendingSubstitutions(
+                  pending: _pending,
+                  nameOf: (participantId) => _nameOf(lineup, participantId),
+                  busy: _saving,
+                  onRemove: (pair) => setState(() => _pending.remove(pair)),
+                  onClear: () => setState(_pending.clear),
+                  onValidate: () => _validatePending(lineup, controller),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _onMatchMenu(
+    BuildContext context,
+    String value,
+    MatchComposition lineup,
+    MatchLiveStateController controller,
+  ) async {
+    switch (value) {
+      case 'halftime':
+        await _confirmHalftime(context, controller);
+      case 'formation':
+        final current = formationForCode(lineup.formationCode).code;
+        final code = await showDialog<String>(
+          context: context,
+          builder: (dialogContext) => SimpleDialog(
+            title: const Text('Dispositif'),
+            children: [
+              for (final formation in footballFormations)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.pop(dialogContext, formation.code),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(formation.code)),
+                      if (formation.code == current)
+                        const Icon(Icons.check_rounded, size: 20),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+        if (code != null && mounted) {
+          await _changeFormation(lineup, code, controller);
+        }
+      case 'add':
+        await showMatchLiveAddPlayerSheet(context, ref, matchId: matchId);
+      case 'restart':
+        await _confirmRestart(context, controller);
+      case 'end':
+        await _confirmEndMatch(context, controller);
+    }
+  }
+
+  /// Journal en volet par-dessus l'écran : il suit l'état du direct, pour
+  /// qu'une suppression ou un buteur corrigé s'y voie tout de suite.
+  Future<void> _openJournal(
+    BuildContext context,
+    MatchLiveStateController controller,
+    List<MatchCompositionEntry> scorerCandidates,
+  ) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: .6,
+        minChildSize: .3,
+        maxChildSize: .92,
+        builder: (_, scrollController) => Consumer(
+          builder: (_, ref, __) {
+            final events = ref
+                    .watch(matchLiveStateProvider(matchId))
+                    .valueOrNull
+                    ?.events ??
+                bundle.events;
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+              child: _LiveJournal(
+                events: events,
+                expanded: true,
+                canEdit: canEdit,
+                onExpandedChanged: (_) {},
+                onEditScorer: (event) => _pickGoalScorer(
+                  context,
+                  controller,
+                  event,
+                  scorerCandidates,
+                ),
+                onEditAssist: (event) => _pickGoalAssist(
+                  context,
+                  controller,
+                  event,
+                  scorerCandidates,
+                ),
+                onDelete: (event) =>
+                    _confirmDeleteEvent(context, controller, event),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 

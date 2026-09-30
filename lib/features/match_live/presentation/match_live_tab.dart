@@ -80,6 +80,15 @@ class MatchLiveTab extends ConsumerWidget {
                 : page;
           }
 
+          // Match en cours, côté coach : il se pilote en mode match plein
+          // écran, ouvert automatiquement ; la fiche garde un raccourci.
+          if (canEdit && bundle.session.state != MatchLiveState.finished) {
+            return _LiveRealtimeBoundary(
+              matchId: matchId,
+              child: _MatchModeLauncher(matchId: matchId),
+            );
+          }
+
           final page = MatchLiveRunningPage(
             matchId: matchId,
             bundle: bundle,
@@ -107,6 +116,113 @@ class MatchLiveTab extends ConsumerWidget {
           );
         }
       },
+    );
+  }
+}
+
+/// Raccourci vers le mode match dans la fiche. Il s'ouvre tout seul la
+/// première fois (au coup d'envoi, ou en arrivant sur un match en cours).
+class _MatchModeLauncher extends StatefulWidget {
+  const _MatchModeLauncher({required this.matchId});
+
+  final String matchId;
+
+  @override
+  State<_MatchModeLauncher> createState() => _MatchModeLauncherState();
+}
+
+class _MatchModeLauncherState extends State<_MatchModeLauncher> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _open();
+    });
+  }
+
+  void _open() {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => MatchLiveMatchMode(matchId: widget.matchId),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text(
+              'Match en cours',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: _open,
+              icon: const Icon(Icons.fullscreen_rounded),
+              label: const Text('Ouvrir le mode match'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Mode match : le direct en plein écran. Il se referme de lui-même quand le
+/// match n'est plus en cours (fin du match, retour avant le coup d'envoi).
+class MatchLiveMatchMode extends ConsumerStatefulWidget {
+  const MatchLiveMatchMode({super.key, required this.matchId});
+
+  final String matchId;
+
+  @override
+  ConsumerState<MatchLiveMatchMode> createState() => _MatchLiveMatchModeState();
+}
+
+class _MatchLiveMatchModeState extends ConsumerState<MatchLiveMatchMode> {
+  bool _closing = false;
+
+  static const _live = {
+    MatchLiveState.running,
+    MatchLiveState.paused,
+    MatchLiveState.halftime,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final bundle =
+        ref.watch(matchLiveStateProvider(widget.matchId)).valueOrNull;
+    final canEdit =
+        ref.watch(isMatchCoachOrAdminProvider(widget.matchId)).valueOrNull ??
+            false;
+    final live = bundle != null &&
+        bundle.session.sessionExists &&
+        _live.contains(bundle.session.state);
+
+    if (!live && bundle != null && !_closing) {
+      _closing = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).maybePop();
+      });
+    }
+
+    return Scaffold(
+      body: SafeArea(
+        child: bundle == null || !live
+            ? const SizedBox.shrink()
+            : MatchLiveRunningPage(
+                matchId: widget.matchId,
+                bundle: bundle,
+                canEdit: canEdit,
+                fullScreen: true,
+              ),
+      ),
     );
   }
 }

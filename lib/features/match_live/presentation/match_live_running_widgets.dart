@@ -12,6 +12,9 @@ class _LiveHeaderBar extends ConsumerWidget {
     required this.onHalftime,
     required this.onRestart,
     required this.onEndMatch,
+    this.onlyClockAction = false,
+    this.leading,
+    this.trailing = const [],
   });
 
   final MatchLiveStateBundle bundle;
@@ -22,6 +25,12 @@ class _LiveHeaderBar extends ConsumerWidget {
   final VoidCallback onHalftime;
   final VoidCallback onRestart;
   final VoidCallback onEndMatch;
+
+  /// Mode match : seul le bouton pause / reprendre reste dans la ligne, les
+  /// autres commandes passent dans le menu « ⋯ » ([trailing]).
+  final bool onlyClockAction;
+  final Widget? leading;
+  final List<Widget> trailing;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -116,6 +125,7 @@ class _LiveHeaderBar extends ConsumerWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (leading != null) leading!,
               SizedBox(
                 width: 72,
                 child: FittedBox(
@@ -132,22 +142,24 @@ class _LiveHeaderBar extends ConsumerWidget {
                   onPressed: firstAction.callback,
                   filled: firstAction.filled,
                 ),
-                action(
-                  tooltip: 'Mi-temps',
-                  icon: Icons.sports_rounded,
-                  onPressed: canGoHalftime ? onHalftime : null,
-                ),
-                action(
-                  tooltip: 'Recommencer',
-                  icon: Icons.restart_alt_rounded,
-                  onPressed: onRestart,
-                ),
-                action(
-                  tooltip: 'Fin du match',
-                  icon: Icons.flag_rounded,
-                  onPressed: onEndMatch,
-                  danger: true,
-                ),
+                if (!onlyClockAction) ...[
+                  action(
+                    tooltip: 'Mi-temps',
+                    icon: Icons.sports_rounded,
+                    onPressed: canGoHalftime ? onHalftime : null,
+                  ),
+                  action(
+                    tooltip: 'Recommencer',
+                    icon: Icons.restart_alt_rounded,
+                    onPressed: onRestart,
+                  ),
+                  action(
+                    tooltip: 'Fin du match',
+                    icon: Icons.flag_rounded,
+                    onPressed: onEndMatch,
+                    danger: true,
+                  ),
+                ],
                 const SizedBox(width: 8),
               ],
               team(grintaIsHome),
@@ -166,6 +178,10 @@ class _LiveHeaderBar extends ConsumerWidget {
                 ),
               ),
               team(!grintaIsHome),
+              if (trailing.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                ...trailing,
+              ],
             ],
           ),
         ),
