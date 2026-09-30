@@ -136,8 +136,12 @@ class DemoBackend {
 
   int _currentMinute(_Session session) => _trueElapsed(session) ~/ 60 + 1;
 
-  List<_Event> _sortedEvents() =>
-      [..._events]..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  /// Ordre d'enregistrement ; à heure égale (même validation), ordre de
+  /// création, les identifiants étant attribués dans l'ordre.
+  List<_Event> _sortedEvents() => [..._events]..sort((a, b) {
+        final byTime = a.createdAt.compareTo(b.createdAt);
+        return byTime != 0 ? byTime : a.id.compareTo(b.id);
+      });
 
   Map<String, dynamic> _eventJson(_Event event) {
     return {
@@ -755,6 +759,10 @@ class DemoBackend {
 
     if (substitutions.isNotEmpty) {
       final minute = _currentMinute(session);
+      // Comme côté serveur (une seule insertion, `now()` de la transaction),
+      // les changements validés ensemble partagent la même heure : c'est ce
+      // qui les regroupe en une salve.
+      final validatedAt = _eventTime();
       for (final s in substitutions) {
         _events.add(
           _Event(
@@ -762,7 +770,7 @@ class DemoBackend {
             type: 'substitution',
             minute: minute,
             half: session.half,
-            createdAt: _eventTime(),
+            createdAt: validatedAt,
             playerInId: s.playerIn,
             playerOutId: s.playerOut,
           ),
