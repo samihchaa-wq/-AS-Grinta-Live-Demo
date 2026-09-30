@@ -543,28 +543,20 @@ class _BenchColumn extends StatelessWidget {
                         final isPendingOut = pendingOutIds.contains(
                           entry.participantId,
                         );
-                        return DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: candidates.isNotEmpty
-                                  ? theme.colorScheme.primary
-                                  : isPendingOut
-                                      ? theme.colorScheme.error
-                                      : Colors.transparent,
-                              width: 2,
-                            ),
+                        return LiveBenchTile(
+                          outlineColor: candidates.isNotEmpty
+                              ? theme.colorScheme.primary
+                              : isPendingOut
+                                  ? theme.colorScheme.error
+                                  : Colors.transparent,
+                          entry: entry,
+                          draggable: canEdit,
+                          metrics: metrics,
+                          timesBenched: bundle.timesBenched(
+                            entry.participantId,
                           ),
-                          child: LiveBenchTile(
-                            entry: entry,
-                            draggable: canEdit,
-                            metrics: metrics,
-                            timesBenched: bundle.timesBenched(
-                              entry.participantId,
-                            ),
-                            lastExit: lastExits[entry.participantId],
-                            namesOnly: true,
-                          ),
+                          lastExit: lastExits[entry.participantId],
+                          namesOnly: true,
                         );
                       },
                     ),

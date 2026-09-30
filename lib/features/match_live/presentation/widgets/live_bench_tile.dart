@@ -19,6 +19,7 @@ class LiveBenchTile extends StatelessWidget {
     this.lastExit,
     this.onTap,
     this.namesOnly = false,
+    this.outlineColor,
   });
 
   final MatchCompositionEntry entry;
@@ -38,48 +39,18 @@ class LiveBenchTile extends StatelessWidget {
   /// Prénom seul, sans pastille d'initiales ni photo (en direct).
   final bool namesOnly;
 
+  /// Contour autour du prénom (remplaçant qui va entrer, dépôt en cours).
+  final Color? outlineColor;
+
   @override
   Widget build(BuildContext context) {
+    if (namesOnly) return _buildNameOnly(context);
     final box = SizedBox(
       width: metrics.width,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (namesOnly) ...[
-            // Comme sur le terrain en direct : seulement le prénom, avec le
-            // repère « passage.série » collé dessous, le tout centré dans la
-            // place qu'occupait la pastille.
-            SizedBox(
-              height: metrics.avatarSize + 2 + metrics.nameHeight,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      entry.displayName,
-                      maxLines: 1,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: metrics.nameFontSize * 1.15,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  if (timesBenched > 0)
-                    SubstituteHistoryBadge(
-                      count: timesBenched,
-                      label: liveBenchLabel(lastExit, timesBenched),
-                      color: switch (lastExit) {
-                        final exit? =>
-                          substitutionSalvoColorAt(exit.colorIndex),
-                        null => substitutionStartColor,
-                      },
-                    ),
-                ],
-              ),
-            ),
-          ] else ...[
+          ...[
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -153,6 +124,85 @@ class LiveBenchTile extends StatelessWidget {
       onDragEnd: (_) => autoScroll.stop(),
       onDraggableCanceled: (_, __) => autoScroll.stop(),
       child: selectableTile,
+    );
+  }
+
+  /// Prénom seul, avec le repère « passage.série » collé dessous, centré dans
+  /// la place qu'occupait la pastille. Le cadre de sélection et le contour
+  /// épousent le prénom, pas toute la place.
+  Widget _buildNameOnly(BuildContext context) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            entry.displayName,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: metrics.nameFontSize * 1.15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        if (timesBenched > 0)
+          SubstituteHistoryBadge(
+            count: timesBenched,
+            label: liveBenchLabel(lastExit, timesBenched),
+            color: switch (lastExit) {
+              final exit? => substitutionSalvoColorAt(exit.colorIndex),
+              null => substitutionStartColor,
+            },
+          ),
+      ],
+    );
+    final outlined = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: outlineColor ?? Colors.transparent,
+          width: 2,
+        ),
+      ),
+      child: content,
+    );
+
+    void handleTap() {
+      if (FormationPitchTapSelection.placePlayer(entry)) return;
+      onTap?.call();
+    }
+
+    final tappable = !draggable && onTap == null
+        ? outlined
+        : InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: handleTap,
+            splashColor: Colors.transparent,
+            highlightColor: Colors.transparent,
+            hoverColor: Colors.transparent,
+            child: outlined,
+          );
+    Widget sized(Widget child) => SizedBox(
+          width: metrics.width,
+          height: metrics.avatarSize + 2 + metrics.nameHeight,
+          child: Center(child: child),
+        );
+    final selectable = sized(
+      FormationPitchTapSelectionHighlight(entry: entry, child: tappable),
+    );
+    if (!draggable) return selectable;
+    final autoScroll = DragAutoScroller(context);
+    return LongPressDraggable<MatchCompositionEntry>(
+      data: entry,
+      feedback: Material(color: Colors.transparent, child: sized(content)),
+      childWhenDragging: Opacity(opacity: .3, child: sized(content)),
+      onDragUpdate: (details) => autoScroll.update(details.globalPosition),
+      onDragEnd: (_) => autoScroll.stop(),
+      onDraggableCanceled: (_, __) => autoScroll.stop(),
+      child: selectable,
     );
   }
 }
