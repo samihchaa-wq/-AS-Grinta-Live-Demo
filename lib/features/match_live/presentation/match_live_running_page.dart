@@ -193,17 +193,15 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
           builder: (context, constraints) {
             final metrics = benchAndPitchMetrics(constraints.maxWidth);
             final lastExits = lastExitMarksByParticipant(bundle.events);
-            // Prochains à sortir : calculés sur la composition enregistrée,
-            // et masqués pendant la préparation d'une salve.
-            final nextOut = _pending.isNotEmpty
-                ? NextOutPlayers.none
-                : nextOutPlayers(
-                    field: lineup.entriesFor(MatchCompositionZone.field),
-                    events: bundle.events,
-                    substituteCounts: bundle.substituteCounts,
-                    benchCount:
-                        lineup.entriesFor(MatchCompositionZone.bench).length,
-                  );
+            // Prochains à sortir : calculés sur la dernière salve validée.
+            // Ils restent affichés pendant la préparation de la suivante, pour
+            // choisir parmi les joueurs en orange ceux qui restent à sortir.
+            final nextOut = nextOutPlayers(
+              field: lineup.entriesFor(MatchCompositionZone.field),
+              events: bundle.events,
+              substituteCounts: bundle.substituteCounts,
+              benchCount: lineup.entriesFor(MatchCompositionZone.bench).length,
+            );
             return IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
