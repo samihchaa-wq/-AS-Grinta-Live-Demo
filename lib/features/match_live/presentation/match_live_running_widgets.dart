@@ -1151,6 +1151,7 @@ class _MatchLiveSpectatorViewState
           fullName: grinta ? 'AS Grinta' : opponentName,
           score: grinta ? session.scoreAsGrinta : session.scoreAdverse,
           canEdit: false,
+          wide: true,
           onIncrement: () {},
           onDecrement: () {},
         );
@@ -1192,36 +1193,37 @@ class _MatchLiveSpectatorViewState
           margin: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: SizedBox(
-              height: 64,
-              child: Row(
-                children: [
-                  Expanded(
+            // Même ligne que le pilote : chrono sur un cinquième, noms
+            // complets des équipes et score sur le reste.
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 64,
                     child: FittedBox(
                       fit: BoxFit.contain,
                       alignment: Alignment.centerLeft,
                       child: MatchLiveClock(session: session, compact: true),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 2,
-                    child: FittedBox(
-                      fit: BoxFit.contain,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          team(grintaIsHome),
-                          const SizedBox(width: 8),
-                          _scoreDash(context),
-                          const SizedBox(width: 8),
-                          team(!grintaIsHome),
-                        ],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 4,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(child: team(grintaIsHome)),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: _scoreDash(context),
                       ),
-                    ),
+                      Expanded(child: team(!grintaIsHome)),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
