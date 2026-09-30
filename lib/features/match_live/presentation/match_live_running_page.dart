@@ -13,6 +13,7 @@ import 'package:as_grinta/features/match_live/presentation/widgets/live_bench_ti
 import 'package:as_grinta/features/match_live/presentation/widgets/live_substitution_line.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_add_player_sheet.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_clock.dart';
+import 'package:as_grinta/features/match_live/presentation/widgets/match_live_remove_player_sheet.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_scorer_picker_dialog.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/substitution_salvo_frame.dart';
 import 'package:as_grinta/features/matches/presentation/widgets/upcoming_match_fixture_header.dart';
@@ -358,6 +359,17 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                                 ),
                       ),
                       _MatchModeAction(
+                        icon: Icons.person_remove_rounded,
+                        label: 'Retirer',
+                        tooltip: 'Retirer un joueur du banc',
+                        onPressed: setupControlsDisabled ||
+                                lineup
+                                    .entriesFor(MatchCompositionZone.bench)
+                                    .isEmpty
+                            ? null
+                            : () => _removeBenchPlayer(lineup, controller),
+                      ),
+                      _MatchModeAction(
                         icon: Icons.restart_alt_rounded,
                         label: 'Recommencer',
                         onPressed: () => _confirmRestart(context, controller),
@@ -417,6 +429,38 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
           ),
       ],
     );
+  }
+
+  /// Pendant le match, seul un joueur du banc peut quitter la feuille : un
+  /// joueur du terrain sort par un remplacement.
+  Future<void> _removeBenchPlayer(
+    MatchComposition lineup,
+    MatchLiveStateController controller,
+  ) async {
+    final removed = await showMatchLiveRemovePlayerPicker(
+      context,
+      candidates: lineup.entriesFor(MatchCompositionZone.bench),
+      note: 'Pendant le match, seuls les joueurs du banc peuvent être '
+          'retirés. Un joueur du terrain sort par un remplacement.',
+    );
+    if (removed == null || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await controller.saveLiveLineup(
+        entries: lineupWithoutPlayer(lineup, removed),
+        expectedLineupRevision: bundle.session.lineupRevision,
+      );
+      if (!mounted) return;
+      _showMessage(context, '${removed.displayName} retiré du match.');
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage(
+        context,
+        'Impossible de retirer ce joueur. L’état Live a été resynchronisé.',
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _onMatchMenu(

@@ -4,6 +4,7 @@ import 'package:as_grinta/core/widgets/grinta_loader.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_state_bundle.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_providers.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_add_player_sheet.dart';
+import 'package:as_grinta/features/match_live/presentation/widgets/match_live_remove_player_sheet.dart';
 import 'package:as_grinta/features/sports_management/domain/football_formation.dart';
 import 'package:as_grinta/features/sports_management/domain/match_composition.dart';
 import 'package:as_grinta/features/sports_management/domain/match_squad_editing.dart';
@@ -159,6 +160,7 @@ class _MatchLivePreKickoffPageState
           // désactive donc le contrôle intégré de MatchSquadEditor ici.
           onFormationChanged: null,
           formationBusy: _busy || _savingFormation,
+          namesOnly: true,
         ),
         if (widget.canEdit) ...[
           const SizedBox(height: 20),
@@ -176,56 +178,76 @@ class _MatchLivePreKickoffPageState
     final formation = formationForCode(lineup.formationCode);
     final controlsDisabled = _busy || _savingFormation;
 
-    return Row(
-      key: const ValueKey('live-pre-kickoff-controls'),
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _durationController,
-            keyboardType: TextInputType.number,
-            enabled: !_busy,
-            decoration: const InputDecoration(
-              labelText: 'Temps de jeu',
-              border: OutlineInputBorder(),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 16,
-              ),
-            ),
+    InputDecoration decoration(String label) => InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 16,
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('squad-formation-${lineup.formationCode}'),
-            initialValue: formation.code,
-            isExpanded: true,
-            decoration: const InputDecoration(
-              labelText: 'Dispositif',
-              border: OutlineInputBorder(),
-              isDense: true,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 16,
-              ),
-            ),
-            items: [
-              for (final item in footballFormations)
-                DropdownMenuItem(value: item.code, child: Text(item.code)),
-            ],
-            onChanged: controlsDisabled
-                ? null
-                : (value) {
-                    if (value != null) _changeFormation(lineup, value);
-                  },
-          ),
-        ),
-        const SizedBox(width: 8),
+        );
+
+    Widget button({
+      required IconData icon,
+      required String label,
+      required VoidCallback? onPressed,
+    }) =>
         Expanded(
           child: SizedBox(
-            height: 56,
-            child: OutlinedButton(
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: onPressed,
+              icon: Icon(icon, size: 20),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              label: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
+            ),
+          ),
+        );
+
+    // Deux lignes : les libellés « Temps de jeu » et « Dispositif » ont la
+    // place de s'afficher en entier.
+    return Column(
+      key: const ValueKey('live-pre-kickoff-controls'),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _durationController,
+                keyboardType: TextInputType.number,
+                enabled: !_busy,
+                decoration: decoration('Temps de jeu (min)'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                key: ValueKey('squad-formation-${lineup.formationCode}'),
+                initialValue: formation.code,
+                isExpanded: true,
+                decoration: decoration('Dispositif'),
+                items: [
+                  for (final item in footballFormations)
+                    DropdownMenuItem(value: item.code, child: Text(item.code)),
+                ],
+                onChanged: controlsDisabled
+                    ? null
+                    : (value) {
+                        if (value != null) _changeFormation(lineup, value);
+                      },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            button(
+              icon: Icons.person_add_alt_1_rounded,
+              label: 'Ajouter un joueur',
               onPressed: controlsDisabled
                   ? null
                   : () => showMatchLiveAddPlayerSheet(
@@ -233,18 +255,51 @@ class _MatchLivePreKickoffPageState
                         ref,
                         matchId: widget.matchId,
                       ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: const FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text('Ajouter un joueur'),
-              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            button(
+              icon: Icons.person_remove_rounded,
+              label: 'Retirer un joueur',
+              onPressed: controlsDisabled ? null : () => _removePlayer(lineup),
+            ),
+          ],
         ),
       ],
     );
+  }
+
+  Future<void> _removePlayer(MatchComposition lineup) async {
+    final removed = await showMatchLiveRemovePlayerPicker(
+      context,
+      candidates: [
+        ...lineup.entriesFor(MatchCompositionZone.field),
+        ...lineup.entriesFor(MatchCompositionZone.bench),
+      ],
+    );
+    if (removed == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await _controller.saveLiveLineup(
+        entries: lineupWithoutPlayer(lineup, removed),
+        expectedLineupRevision: widget.bundle.session.lineupRevision,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${removed.displayName} retiré du match.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Impossible de retirer ce joueur. L’état Live a été '
+            'resynchronisé.',
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _changeFormation(

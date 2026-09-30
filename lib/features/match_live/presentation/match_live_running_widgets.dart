@@ -438,6 +438,7 @@ class _BenchColumn extends StatelessWidget {
                               entry.participantId,
                             ),
                             lastExit: lastExits[entry.participantId],
+                            namesOnly: true,
                           ),
                         );
                       },

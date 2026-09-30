@@ -18,6 +18,7 @@ class LiveBenchTile extends StatelessWidget {
     this.timesBenched = 0,
     this.lastExit,
     this.onTap,
+    this.namesOnly = false,
   });
 
   final MatchCompositionEntry entry;
@@ -34,6 +35,9 @@ class LiveBenchTile extends StatelessWidget {
   final SubstitutionExitMark? lastExit;
   final VoidCallback? onTap;
 
+  /// Prénom seul, sans pastille d'initiales ni photo (en direct).
+  final bool namesOnly;
+
   @override
   Widget build(BuildContext context) {
     final box = SizedBox(
@@ -41,38 +45,84 @@ class LiveBenchTile extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Comme sur le terrain en direct : seulement le prénom, avec le
-          // repère « passage.série » collé dessous, le tout centré dans la
-          // place qu'occupait la pastille.
-          SizedBox(
-            height: metrics.avatarSize + 2 + metrics.nameHeight,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    entry.displayName,
-                    maxLines: 1,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: metrics.nameFontSize * 1.15,
-                      fontWeight: FontWeight.w500,
+          if (namesOnly) ...[
+            // Comme sur le terrain en direct : seulement le prénom, avec le
+            // repère « passage.série » collé dessous, le tout centré dans la
+            // place qu'occupait la pastille.
+            SizedBox(
+              height: metrics.avatarSize + 2 + metrics.nameHeight,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      entry.displayName,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: metrics.nameFontSize * 1.15,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
+                  if (timesBenched > 0)
+                    SubstituteHistoryBadge(
+                      count: timesBenched,
+                      label: liveBenchLabel(lastExit, timesBenched),
+                      color: switch (lastExit) {
+                        final exit? =>
+                          substitutionSalvoColorAt(exit.colorIndex),
+                        null => substitutionStartColor,
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                PlayerAvatar(
+                  photoUrl: entry.photoUrl,
+                  name: entry.displayName,
+                  lastName: entry.lastInitial,
+                  isGoalkeeper: entry.isGoalkeeper,
+                  size: metrics.avatarSize,
                 ),
                 if (timesBenched > 0)
-                  SubstituteHistoryBadge(
-                    count: timesBenched,
-                    label: liveBenchLabel(lastExit, timesBenched),
-                    color: switch (lastExit) {
-                      final exit? => substitutionSalvoColorAt(exit.colorIndex),
-                      null => substitutionStartColor,
-                    },
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: SubstituteHistoryBadge(
+                      count: timesBenched,
+                      label: liveBenchLabel(lastExit, timesBenched),
+                      color: switch (lastExit) {
+                        final exit? =>
+                          substitutionSalvoColorAt(exit.colorIndex),
+                        null => substitutionStartColor,
+                      },
+                    ),
                   ),
               ],
             ),
-          ),
+            const SizedBox(height: 2),
+            // La colonne du banc est collée au bord de l'écran : le prénom ne
+            // peut pas déborder comme sur le terrain. Il est donc réduit juste
+            // ce qu'il faut plutôt que coupé (« Franç… »).
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                entry.displayName,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: metrics.nameFontSize,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
