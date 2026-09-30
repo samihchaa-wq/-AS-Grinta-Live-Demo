@@ -1,0 +1,108 @@
+name: Verify Live demo/app parity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/live_visual_snapshot_test.dart'
+      - '.github/workflows/live_parity_verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout demo
+        uses: actions/checkout@v4
+        with:
+          path: demo
+
+      - name: Checkout app Live branch
+        uses: actions/checkout@v4
+        with:
+          repository: samihchaa-wq/AS-Grinta
+          ref: claude/live-pilote-spectateur
+          path: app
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Verify every shared lib file is identical
+        shell: bash
+        run: |
+          set -euo pipefail
+          mismatch=0
+          while IFS= read -r -d '' file; do
+            rel="${file#demo/lib/}"
+            case "$rel" in
+              main.dart|demo/*) continue ;;
+            esac
+            target="app/lib/$rel"
+            if [[ ! -f "$target" ]]; then
+              echo "Missing in app: lib/$rel"
+              mismatch=1
+              continue
+            fi
+            if ! cmp -s "$file" "$target"; then
+              echo "Different: lib/$rel"
+              mismatch=1
+            fi
+          done < <(find demo/lib -type f -print0 | sort -z)
+          if [[ "$mismatch" -ne 0 ]]; then
+            exit 1
+          fi
+          echo "All shared lib files are byte-identical."
+
+      - name: Prepare app with the demo-only test backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf app/lib/demo
+          cp -R demo/lib/demo app/lib/demo
+          cp demo/test/live_visual_snapshot_test.dart app/test/live_visual_snapshot_test.dart
+
+      - name: Install demo dependencies
+        working-directory: demo
+        run: flutter pub get
+
+      - name: Render demo snapshots
+        working-directory: demo
+        env:
+          SNAPSHOT_DIR: ${{ github.workspace }}/snapshots-demo
+        run: flutter test test/live_visual_snapshot_test.dart
+
+      - name: Install app dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Render app snapshots
+        working-directory: app
+        env:
+          SNAPSHOT_DIR: ${{ github.workspace }}/snapshots-app
+        run: flutter test test/live_visual_snapshot_test.dart
+
+      - name: Compare rendered PNGs byte for byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected=(
+            01_before_open.png
+            02_pre_kickoff.png
+            03_halftime_spectator.png
+            04_same_minute_salvos_pilot.png
+            05_finished.png
+          )
+          for file in "${expected[@]}"; do
+            test -f "snapshots-demo/$file"
+            test -f "snapshots-app/$file"
+            cmp "snapshots-demo/$file" "snapshots-app/$file"
+            echo "Identical: $file"
+          done
