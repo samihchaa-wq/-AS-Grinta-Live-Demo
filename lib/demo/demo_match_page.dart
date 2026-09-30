@@ -36,7 +36,7 @@ class DemoMatchPage extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text('Démo : seul le Live est disponible.'),
+          content: Text('Pas disponible en mode démo.'),
         ),
       );
   }
@@ -71,7 +71,13 @@ class DemoMatchPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final page = Scaffold(
-      appBar: GrintaAppBar(title: const Text('Fiche du match')),
+      // Dans l'application, la fiche s'ouvre depuis le calendrier et affiche
+      // une flèche retour. La démo n'a pas de calendrier : même flèche, qui
+      // explique seulement qu'elle ne mène nulle part ici.
+      appBar: GrintaAppBar(
+        title: const Text('Fiche du match'),
+        leading: BackButton(onPressed: () => _unavailable(context)),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(upcomingMatchFixtureProvider(matchId));

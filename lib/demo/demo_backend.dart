@@ -99,7 +99,14 @@ class DemoBackend {
   Map<String, dynamic> liveSnapshot() {
     final session = _session;
     if (session == null) {
-      return {'match_id': demoMatchId, 'state': null, 'session_exists': false};
+      // Composition publiée visible avant l'ouverture du Live : les
+      // spectateurs voient la composition prévue.
+      return {
+        'match_id': demoMatchId,
+        'state': null,
+        'session_exists': false,
+        'lineup': compositionSnapshot(),
+      };
     }
     final trueElapsed = _trueElapsed(session);
     return {

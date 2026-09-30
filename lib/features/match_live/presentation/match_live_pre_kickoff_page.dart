@@ -9,6 +9,7 @@ import 'package:as_grinta/features/match_live/presentation/widgets/match_live_re
 import 'package:as_grinta/features/sports_management/domain/football_formation.dart';
 import 'package:as_grinta/features/sports_management/domain/match_composition.dart';
 import 'package:as_grinta/features/sports_management/domain/match_squad_editing.dart';
+import 'package:as_grinta/features/sports_management/presentation/widgets/composition_pitch.dart';
 import 'package:as_grinta/features/sports_management/presentation/widgets/match_squad_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -378,5 +379,66 @@ class _MatchLivePreKickoffPageState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+/// Avant le coup d'envoi, pour ceux qui ne pilotent pas : la composition
+/// prévue, en lecture seule, avec le temps de jeu et le dispositif.
+class MatchLivePreKickoffSpectatorView extends StatelessWidget {
+  const MatchLivePreKickoffSpectatorView({super.key, required this.bundle});
+
+  final MatchLiveStateBundle bundle;
+
+  @override
+  Widget build(BuildContext context) {
+    final lineup = bundle.lineup;
+    if (lineup == null) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text(
+            'La composition n’est pas encore prête.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Le match n’a pas encore démarré',
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                Text(
+                  '${bundle.session.planPlannedDurationMinutes} min · '
+                  '${formationForCode(lineup.formationCode).code}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1,
+          child: CompositionPitchWithBench(
+            field: lineup.entriesFor(MatchCompositionZone.field),
+            bench: lineup.entriesFor(MatchCompositionZone.bench),
+          ),
+        ),
+      ],
+    );
   }
 }

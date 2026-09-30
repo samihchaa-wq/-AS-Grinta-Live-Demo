@@ -52,42 +52,13 @@ class MatchLiveTab extends ConsumerWidget {
         final canEdit = canEditAsync.valueOrNull ?? false;
 
         try {
-          if (!bundle.session.sessionExists) {
-            if (!canEdit) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    'Le match n’a pas encore démarré.',
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            }
-            return MatchLivePreKickoffPage(
-              matchId: matchId,
-              bundle: bundle,
-              canEdit: true,
-            );
-          }
-
-          if (bundle.session.state == MatchLiveState.notStarted) {
-            final page = MatchLivePreKickoffPage(
-              matchId: matchId,
-              bundle: bundle,
-              canEdit: canEdit,
-            );
-            return canEdit
-                ? _LiveRealtimeBoundary(matchId: matchId, child: page)
-                : page;
-          }
-
-          // Match en cours : une seule personne pilote, tous les autres
-          // suivent en spectateur. Un coach choisit sous « Live ».
+          // De T-15 jusqu'à la fin du match : une seule personne pilote
+          // (préparation puis direct), tous les autres suivent en spectateur.
+          // Un coach choisit sous « Live » ; un joueur est spectateur.
           if (bundle.session.state != MatchLiveState.finished) {
             final Widget child = canEdit
                 ? _CoachLiveView(matchId: matchId, bundle: bundle)
-                : MatchLiveSpectatorView(bundle: bundle);
+                : _spectatorView(bundle);
             return _LiveRealtimeBoundary(matchId: matchId, child: child);
           }
 
@@ -122,7 +93,16 @@ class MatchLiveTab extends ConsumerWidget {
   }
 }
 
-/// Coach pendant le match : barre « Spectateur | Piloter » sous « Live ».
+/// Vue spectateur : composition prévue avant le coup d'envoi, direct ensuite.
+Widget _spectatorView(MatchLiveStateBundle bundle) {
+  final session = bundle.session;
+  if (session.sessionExists && session.state != MatchLiveState.notStarted) {
+    return MatchLiveSpectatorView(bundle: bundle);
+  }
+  return MatchLivePreKickoffSpectatorView(bundle: bundle);
+}
+
+/// Coach de T-15 à la fin du match : barre « Spectateur | Piloter ».
 class _CoachLiveView extends ConsumerWidget {
   const _CoachLiveView({required this.matchId, required this.bundle});
 
@@ -146,18 +126,28 @@ class _CoachLiveView extends ConsumerWidget {
       }
     }
 
+    final started = bundle.session.sessionExists &&
+        bundle.session.state != MatchLiveState.notStarted;
     final Widget body;
     if (mode == LiveViewMode.spectator) {
-      body = MatchLiveSpectatorView(bundle: bundle);
+      body = _spectatorView(bundle);
     } else if (pilot == LivePilot.me) {
+      // Même session de pilote avant et après le coup d'envoi : le pilote de
+      // la préparation reste pilote du direct.
       body = _PilotSession(
         matchId: matchId,
-        child: MatchLiveRunningPage(
-          matchId: matchId,
-          bundle: bundle,
-          canEdit: true,
-          fullScreen: true,
-        ),
+        child: started
+            ? MatchLiveRunningPage(
+                matchId: matchId,
+                bundle: bundle,
+                canEdit: true,
+                fullScreen: true,
+              )
+            : MatchLivePreKickoffPage(
+                matchId: matchId,
+                bundle: bundle,
+                canEdit: true,
+              ),
       );
     } else {
       body = _SomeoneElsePilots(matchId: matchId);
