@@ -108,17 +108,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
         ),
         const SizedBox(height: 10),
         _ScoreCard(bundle: bundle, canEdit: canEdit),
-        if (canEdit && _pending.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _PendingSubstitutions(
-            pending: _pending,
-            nameOf: (participantId) => _nameOf(lineup, participantId),
-            busy: _saving,
-            onRemove: (pair) => setState(() => _pending.remove(pair)),
-            onClear: () => setState(_pending.clear),
-            onValidate: () => _validatePending(lineup, controller),
-          ),
-        ],
         if (canEdit) ...[
           const SizedBox(height: 10),
           Row(
@@ -178,15 +167,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
               ),
             ],
           ),
-          if (_pending.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text(
-                'Valide ou annule les remplacements en attente avant de '
-                'changer de dispositif ou d’ajouter un joueur.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
         ],
         const SizedBox(height: AppSpacing.sectionGap),
         LayoutBuilder(
@@ -258,6 +238,27 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
             );
           },
         ),
+        // Remplacements en préparation : sous le terrain, pour qu'il ne
+        // descende pas à chaque joueur sélectionné.
+        if (canEdit && _pending.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _PendingSubstitutions(
+            pending: _pending,
+            nameOf: (participantId) => _nameOf(lineup, participantId),
+            busy: _saving,
+            onRemove: (pair) => setState(() => _pending.remove(pair)),
+            onClear: () => setState(_pending.clear),
+            onValidate: () => _validatePending(lineup, controller),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Valide ou annule les remplacements en attente avant de '
+              'changer de dispositif ou d’ajouter un joueur.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.sectionGap),
         _LiveJournal(
           key: _journalKey,
