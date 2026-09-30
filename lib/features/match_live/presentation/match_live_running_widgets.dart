@@ -131,32 +131,39 @@ class _LiveHeaderBar extends ConsumerWidget {
             if (!showClockAction)
               // Mode match : la ligne ne porte plus que le chrono et le
               // score, étalés sur toute la largeur et agrandis.
-              SizedBox(
-                height: 76,
-                child: Row(
-                  children: [
-                    // Chrono : un cinquième de la ligne.
-                    Expanded(
+              // La hauteur suit les noms d'équipe, qui peuvent passer sur
+              // plusieurs lignes ; le score reste aligné en bas.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Chrono : un cinquième de la ligne.
+                  Expanded(
+                    child: SizedBox(
+                      height: 64,
                       child: FittedBox(
                         fit: BoxFit.contain,
                         alignment: Alignment.centerLeft,
                         child: MatchLiveClock(session: session, compact: true),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    // Score : les quatre cinquièmes restants.
-                    Expanded(
-                      flex: 4,
-                      child: Row(
-                        children: [
-                          Expanded(child: team(grintaIsHome, wide: true)),
-                          _scoreDash(context),
-                          Expanded(child: team(!grintaIsHome, wide: true)),
-                        ],
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Score : les quatre cinquièmes restants.
+                  Expanded(
+                    flex: 4,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(child: team(grintaIsHome, wide: true)),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: _scoreDash(context),
+                        ),
+                        Expanded(child: team(!grintaIsHome, wide: true)),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               )
             else
               FittedBox(
@@ -426,19 +433,11 @@ class _LiveScore extends StatelessWidget {
         // Mode match : nom complet en blanc, sur toute la largeur de son bloc
         // (du « − » au « + »), réduit s'il est trop long.
         if (wide)
+          // Même règle que le calendrier : taille et écriture fixes, retour
+          // à la ligne équilibré si le nom ne tient pas.
           SizedBox(
             width: double.infinity,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                fullName,
-                maxLines: 1,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+            child: CalendarTeamName(name: fullName, color: Colors.white),
           )
         else
           Text(
