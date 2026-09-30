@@ -188,81 +188,65 @@ class _MatchLivePreKickoffPageState
           ),
         );
 
-    Widget button({
+    Widget iconAction({
       required IconData icon,
-      required String label,
+      required String tooltip,
       required VoidCallback? onPressed,
     }) =>
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: onPressed,
-              icon: Icon(icon, size: 20),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              label: FittedBox(fit: BoxFit.scaleDown, child: Text(label)),
-            ),
-          ),
+        IconButton.outlined(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          constraints: const BoxConstraints.tightFor(width: 48, height: 52),
+          icon: Icon(icon),
         );
 
-    // Deux lignes : les libellés « Temps de jeu » et « Dispositif » ont la
-    // place de s'afficher en entier.
-    return Column(
+    // Une seule ligne : temps de jeu, dispositif, ajouter et retirer.
+    return Row(
       key: const ValueKey('live-pre-kickoff-controls'),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _durationController,
-                keyboardType: TextInputType.number,
-                enabled: !_busy,
-                decoration: decoration('Temps de jeu (min)'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                key: ValueKey('squad-formation-${lineup.formationCode}'),
-                initialValue: formation.code,
-                isExpanded: true,
-                decoration: decoration('Dispositif'),
-                items: [
-                  for (final item in footballFormations)
-                    DropdownMenuItem(value: item.code, child: Text(item.code)),
-                ],
-                onChanged: controlsDisabled
-                    ? null
-                    : (value) {
-                        if (value != null) _changeFormation(lineup, value);
-                      },
-              ),
-            ),
-          ],
+        Expanded(
+          child: TextField(
+            controller: _durationController,
+            keyboardType: TextInputType.number,
+            enabled: !_busy,
+            decoration: decoration('Temps'),
+          ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            button(
-              icon: Icons.person_add_alt_1_rounded,
-              label: 'Ajouter un joueur',
-              onPressed: controlsDisabled
-                  ? null
-                  : () => showMatchLiveAddPlayerSheet(
-                        context,
-                        ref,
-                        matchId: widget.matchId,
-                      ),
-            ),
-            const SizedBox(width: 8),
-            button(
-              icon: Icons.person_remove_rounded,
-              label: 'Retirer un joueur',
-              onPressed: controlsDisabled ? null : () => _removePlayer(lineup),
-            ),
-          ],
+        const SizedBox(width: 8),
+        Expanded(
+          child: DropdownButtonFormField<String>(
+            key: ValueKey('squad-formation-${lineup.formationCode}'),
+            initialValue: formation.code,
+            isExpanded: true,
+            decoration: decoration('Dispo'),
+            items: [
+              for (final item in footballFormations)
+                DropdownMenuItem(value: item.code, child: Text(item.code)),
+            ],
+            onChanged: controlsDisabled
+                ? null
+                : (value) {
+                    if (value != null) _changeFormation(lineup, value);
+                  },
+          ),
+        ),
+        const SizedBox(width: 8),
+        iconAction(
+          icon: Icons.person_add_alt_1_rounded,
+          tooltip: 'Ajouter un joueur',
+          onPressed: controlsDisabled
+              ? null
+              : () => showMatchLiveAddPlayerSheet(
+                    context,
+                    ref,
+                    matchId: widget.matchId,
+                  ),
+        ),
+        const SizedBox(width: 6),
+        iconAction(
+          icon: Icons.person_remove_rounded,
+          tooltip: 'Retirer un joueur',
+          onPressed: controlsDisabled ? null : () => _removePlayer(lineup),
         ),
       ],
     );
