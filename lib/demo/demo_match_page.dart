@@ -82,7 +82,8 @@ class DemoMatchPage extends ConsumerWidget {
             40,
           ),
           children: [
-            const UpcomingMatchFixtureHeader(matchId: matchId),
+            // Onglet Live : pas d'encadré du match en haut, pour laisser la
+            // place au direct (les autres onglets le gardent dans l'appli).
             SegmentedButton<String>(
               showSelectedIcon: false,
               segments: const [
