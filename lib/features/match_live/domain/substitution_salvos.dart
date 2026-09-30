@@ -32,10 +32,18 @@ class SubstitutionSalvo {
 /// de la série parmi celles qui envoient des joueurs à ce même passage : les
 /// joueurs sortis ensemble partagent le même repère.
 class SubstitutionExitMark {
-  const SubstitutionExitMark({required this.rest, required this.rank});
+  const SubstitutionExitMark({
+    required this.rest,
+    required this.rank,
+    this.colorIndex = 0,
+  });
 
   final int rest;
   final int rank;
+
+  /// Couleur de la salve de cette sortie : la même que son encadré dans le
+  /// journal et dans « Faits du match ».
+  final int colorIndex;
 
   String get label => '$rest.$rank';
 }
@@ -83,6 +91,7 @@ Map<MatchLiveEvent, SubstitutionExitMark> substitutionExitMarksByEvent(
   // Pour chaque passage : nombre de séries déjà vues, et la dernière.
   final seriesByRest = <int, int>{};
   final lastSeriesByRest = <int, (int, int, DateTime?)>{};
+  final salvos = substitutionSalvosByEvent(events);
   final result = Map<MatchLiveEvent, SubstitutionExitMark>.identity();
   for (final event in _chronologicalSubstitutions(events)) {
     final outKey = event.playerOutParticipantId ??
@@ -95,7 +104,11 @@ Map<MatchLiveEvent, SubstitutionExitMark> substitutionExitMarksByEvent(
       lastSeriesByRest[rest] = series;
       seriesByRest[rest] = (seriesByRest[rest] ?? 0) + 1;
     }
-    result[event] = SubstitutionExitMark(rest: rest, rank: seriesByRest[rest]!);
+    result[event] = SubstitutionExitMark(
+      rest: rest,
+      rank: seriesByRest[rest]!,
+      colorIndex: salvos[event]!.colorIndex,
+    );
 
     final inKey = event.playerInParticipantId ?? event.playerInName;
     if (inKey != null) rests.putIfAbsent(inKey, () => 1);

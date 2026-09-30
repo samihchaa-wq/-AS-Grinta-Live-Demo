@@ -647,22 +647,37 @@ class AssistBadge extends StatelessWidget {
 }
 
 class SubstituteHistoryBadge extends StatelessWidget {
-  const SubstituteHistoryBadge({super.key, required this.count, this.label});
+  const SubstituteHistoryBadge({
+    super.key,
+    required this.count,
+    this.label,
+    this.color,
+  });
 
   final int count;
 
   /// Texte affiché à la place du compteur, par exemple « 2.1 » en direct.
   final String? label;
 
+  /// Couleur de la salve de la dernière sortie, en direct. Sans elle, la
+  /// pastille reste neutre.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
+    const base = Color(0xFF2E3A59);
+    final accent = color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: const Color(0xFF2E3A59),
+        color: accent == null
+            ? base
+            : Color.alphaBlend(accent.withValues(alpha: .22), base),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.white70, width: .8),
+        border: accent == null
+            ? Border.all(color: Colors.white70, width: .8)
+            : Border.all(color: accent, width: 1.2),
       ),
       child: Text(
         label ?? '$count',

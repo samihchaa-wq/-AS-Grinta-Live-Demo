@@ -19,8 +19,10 @@ const substitutionSalvoPalette = <Color>[
 ];
 
 Color substitutionSalvoColor(SubstitutionSalvo salvo) =>
-    substitutionSalvoPalette[
-        salvo.colorIndex % substitutionSalvoPalette.length];
+    substitutionSalvoColorAt(salvo.colorIndex);
+
+Color substitutionSalvoColorAt(int colorIndex) =>
+    substitutionSalvoPalette[colorIndex % substitutionSalvoPalette.length];
 
 /// Repère « passage.série » du joueur qui sort, à la place de l'icône de
 /// remplacement.

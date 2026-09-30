@@ -198,6 +198,7 @@ class FormationPitchEditor extends StatefulWidget {
     this.editable = true,
     this.finishedBenchCounts = const {},
     this.benchLabels = const {},
+    this.benchColors = const {},
     this.markerMetrics,
   });
 
@@ -215,6 +216,9 @@ class FormationPitchEditor extends StatefulWidget {
   /// Texte affiché à la place du compteur, par participantId (« 2.1 » en
   /// direct). Un joueur absent garde son simple compteur.
   final Map<String, String> benchLabels;
+
+  /// Couleur de la pastille, par participantId (salve de la dernière sortie).
+  final Map<String, Color> benchColors;
 
   /// Taille imposée des marqueurs. Renseignée quand un autre bloc (le banc du
   /// Tableau Blanc) doit afficher exactement les mêmes vignettes ; sinon elle
@@ -598,6 +602,7 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                             child: SubstituteHistoryBadge(
                               count: finishedBenchCount,
                               label: benchLabel,
+                              color: widget.benchColors[entry.participantId],
                             ),
                           ),
                       ],

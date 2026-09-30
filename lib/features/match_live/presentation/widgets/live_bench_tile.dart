@@ -1,5 +1,6 @@
 import 'package:as_grinta/core/widgets/drag_auto_scroll.dart';
 import 'package:as_grinta/features/match_live/domain/substitution_salvos.dart';
+import 'package:as_grinta/features/match_live/presentation/widgets/substitution_salvo_frame.dart';
 import 'package:as_grinta/features/sports_management/domain/match_composition.dart';
 import 'package:as_grinta/features/sports_management/presentation/widgets/composition_pitch.dart';
 import 'package:as_grinta/features/sports_management/presentation/widgets/formation_pitch_editor.dart';
@@ -57,6 +58,10 @@ class LiveBenchTile extends StatelessWidget {
                   child: SubstituteHistoryBadge(
                     count: timesBenched,
                     label: lastExit?.label,
+                    color: switch (lastExit) {
+                      final exit? => substitutionSalvoColorAt(exit.colorIndex),
+                      null => null,
+                    },
                   ),
                 ),
             ],

@@ -217,6 +217,12 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                                 .entries)
                           key: value.label,
                       },
+                      benchColors: {
+                        for (final MapEntry(:key, :value)
+                            in lastExitMarksByParticipant(bundle.events)
+                                .entries)
+                          key: substitutionSalvoColorAt(value.colorIndex),
+                      },
                       markerMetrics: metrics,
                       onDroppedOnSlot: (moving, slot) => _handlePitchDrop(
                         context,
