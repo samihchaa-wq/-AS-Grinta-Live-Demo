@@ -343,8 +343,18 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
 
     return Column(
       children: [
+        // Retour à la fiche : au-dessus de l'encadré, pour laisser toute la
+        // largeur de la ligne au chrono et au score.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: IconButton(
+            tooltip: 'Quitter le mode match',
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
           child: _LiveHeaderBar(
             bundle: bundle,
             canEdit: canEdit,
@@ -437,11 +447,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                             ),
                   ),
               ],
-            ),
-            leading: IconButton(
-              tooltip: 'Quitter le mode match',
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.close_rounded),
             ),
           ),
         ),

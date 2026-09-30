@@ -14,7 +14,6 @@ class _LiveHeaderBar extends ConsumerWidget {
     required this.onEndMatch,
     this.onlyClockAction = false,
     this.showClockAction = true,
-    this.leading,
     this.bottom,
   });
 
@@ -33,7 +32,6 @@ class _LiveHeaderBar extends ConsumerWidget {
 
   /// Mode match : pause / reprendre passe sur la seconde ligne.
   final bool showClockAction;
-  final Widget? leading;
 
   /// Seconde ligne du bandeau (commandes occasionnelles du mode match).
   final Widget? bottom;
@@ -136,7 +134,6 @@ class _LiveHeaderBar extends ConsumerWidget {
                 height: 72,
                 child: Row(
                   children: [
-                    if (leading != null) leading!,
                     Expanded(
                       flex: 4,
                       child: FittedBox(
@@ -169,7 +166,6 @@ class _LiveHeaderBar extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (leading != null) leading!,
                     SizedBox(
                       width: 72,
                       child: FittedBox(
@@ -389,8 +385,7 @@ String _shortName(String name) {
       .toUpperCase();
 }
 
-/// Score d'une équipe dans le bandeau : sigle, score et « + ». Un appui sur
-/// le score propose de retirer un but.
+/// Score d'une équipe dans le bandeau : sigle, puis « − », score et « + ».
 class _LiveScore extends StatelessWidget {
   const _LiveScore({
     required this.shortName,
@@ -428,26 +423,20 @@ class _LiveScore extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (canEdit && score > 0)
-              PopupMenuButton<void>(
-                tooltip: 'Score de $fullName',
+            if (canEdit)
+              IconButton(
+                tooltip: 'Retirer un but à $fullName',
+                onPressed: score > 0 ? onDecrement : null,
                 padding: EdgeInsets.zero,
-                itemBuilder: (_) => [
-                  PopupMenuItem<void>(
-                    onTap: onDecrement,
-                    child: Text('Retirer un but à $fullName'),
-                  ),
-                ],
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: number,
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: number,
+                constraints:
+                    const BoxConstraints.tightFor(width: 30, height: 30),
+                iconSize: 22,
+                icon: const Icon(Icons.remove_circle_outline_rounded),
               ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: number,
+            ),
             if (canEdit)
               IconButton(
                 tooltip: 'Ajouter un but à $fullName',
