@@ -421,7 +421,7 @@ class _LiveScore extends StatelessWidget {
       style:
           (wide ? theme.textTheme.displaySmall : theme.textTheme.headlineSmall)
               ?.copyWith(
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w400,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );

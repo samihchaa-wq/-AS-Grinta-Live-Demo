@@ -753,8 +753,7 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                     label: entry.displayName.trim(),
                     fontSize: fontSize * 1.15,
                     color: color ?? Colors.white,
-                    fontWeight:
-                        color == null ? FontWeight.w400 : FontWeight.w700,
+                    fontWeight: FontWeight.w400,
                     suffix: widget.nameSuffixes[entry.participantId],
                   ),
                   if (badge != null) badge,

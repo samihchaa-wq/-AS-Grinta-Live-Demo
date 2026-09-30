@@ -142,7 +142,7 @@ class LiveBenchTile extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: metrics.nameFontSize * 1.15,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
             ),
           ),
         ),
