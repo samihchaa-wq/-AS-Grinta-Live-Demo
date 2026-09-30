@@ -579,32 +579,24 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
               onTap:
                   widget.editable ? () => _tapOccupiedSlot(slot, entry) : null,
               borderRadius: BorderRadius.circular(16),
+              // Prénoms seuls : pas d'effet de toucher sur toute la place du
+              // joueur, le cadre de sélection suffit.
+              splashColor: widget.namesOnly ? Colors.transparent : null,
+              highlightColor: widget.namesOnly ? Colors.transparent : null,
+              hoverColor: widget.namesOnly ? Colors.transparent : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 140),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? formationSelectionColor.withValues(alpha: .22)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: highlighted
-                        ? formationSelectionColor
-                        : Colors.transparent,
-                    width: highlighted ? 2.5 : 0,
-                  ),
-                  boxShadow: highlighted
-                      ? [
-                          BoxShadow(
-                            color:
-                                formationSelectionColor.withValues(alpha: .35),
-                            blurRadius: 6,
-                          ),
-                        ]
-                      : null,
+                // Prénoms seuls : le cadre de sélection épouse le prénom
+                // (voir _nameOnlyMarker) au lieu de toute la place du joueur.
+                decoration: _selectionDecoration(
+                  selected: selected && !widget.namesOnly,
+                  highlighted: highlighted && !widget.namesOnly,
                 ),
                 child: widget.namesOnly
                     ? _nameOnlyMarker(
                         entry: entry,
+                        selected: selected,
+                        highlighted: highlighted,
                         width: width,
                         height: avatarSize + 2 + metrics.nameHeight,
                         fontSize: nameFontSize,
@@ -692,8 +684,33 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
   /// sous la pastille (même encombrement, pour ne rien décaler), et
   /// le repère « passage.série » juste dessous : au-dessus ou à côté, il
   /// serait coupé pour les joueurs placés en bord de terrain.
+  BoxDecoration _selectionDecoration({
+    required bool selected,
+    required bool highlighted,
+  }) =>
+      BoxDecoration(
+        color: selected
+            ? formationSelectionColor.withValues(alpha: .22)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: highlighted ? formationSelectionColor : Colors.transparent,
+          width: highlighted ? 2.5 : 0,
+        ),
+        boxShadow: highlighted
+            ? [
+                BoxShadow(
+                  color: formationSelectionColor.withValues(alpha: .35),
+                  blurRadius: 6,
+                ),
+              ]
+            : null,
+      );
+
   Widget _nameOnlyMarker({
     required MatchCompositionEntry entry,
+    bool selected = false,
+    bool highlighted = false,
     required double width,
     required double height,
     required double fontSize,
@@ -719,15 +736,31 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
           children: [
             // Le prénom reste exactement où il était sous la pastille : la
             // place du joueur sur le terrain ne bouge pas.
-            SizedBox(height: height - FormationMarkerMetrics(width).nameHeight),
-            PitchPlayerName(
-              label: entry.displayName.trim(),
-              fontSize: fontSize * 1.15,
-              color: color ?? Colors.white,
-              fontWeight: color == null ? FontWeight.w400 : FontWeight.w700,
-              suffix: widget.nameSuffixes[entry.participantId],
+            SizedBox(
+              height: height - FormationMarkerMetrics(width).nameHeight - 4,
             ),
-            if (badge != null) badge,
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 140),
+              padding: const EdgeInsets.all(4),
+              decoration: _selectionDecoration(
+                selected: selected,
+                highlighted: highlighted,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PitchPlayerName(
+                    label: entry.displayName.trim(),
+                    fontSize: fontSize * 1.15,
+                    color: color ?? Colors.white,
+                    fontWeight:
+                        color == null ? FontWeight.w400 : FontWeight.w700,
+                    suffix: widget.nameSuffixes[entry.participantId],
+                  ),
+                  if (badge != null) badge,
+                ],
+              ),
+            ),
           ],
         ),
       ),
