@@ -191,6 +191,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
         LayoutBuilder(
           builder: (context, constraints) {
             final metrics = benchAndPitchMetrics(constraints.maxWidth);
+            final lastExits = lastExitMarksByParticipant(bundle.events);
             return IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,15 +214,20 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                       finishedBenchCounts: bundle.substituteCounts,
                       benchLabels: {
                         for (final MapEntry(:key, :value)
-                            in lastExitMarksByParticipant(bundle.events)
-                                .entries)
-                          key: value.label,
+                            in bundle.substituteCounts.entries)
+                          key: liveBenchLabel(lastExits[key], value),
                       },
                       benchColors: {
-                        for (final MapEntry(:key, :value)
-                            in lastExitMarksByParticipant(bundle.events)
-                                .entries)
-                          key: substitutionSalvoColorAt(value.colorIndex),
+                        for (final key in bundle.substituteCounts.keys)
+                          key: switch (lastExits[key]) {
+                            final exit? =>
+                              substitutionSalvoColorAt(exit.colorIndex),
+                            null => substitutionStartColor,
+                          },
+                      },
+                      solidBenchBadges: {
+                        for (final key in bundle.substituteCounts.keys)
+                          if (lastExits[key] == null) key,
                       },
                       markerMetrics: metrics,
                       onDroppedOnSlot: (moving, slot) => _handlePitchDrop(

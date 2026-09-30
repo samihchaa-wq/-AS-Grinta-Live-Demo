@@ -652,6 +652,7 @@ class SubstituteHistoryBadge extends StatelessWidget {
     required this.count,
     this.label,
     this.color,
+    this.solid = false,
   });
 
   final int count;
@@ -663,17 +664,23 @@ class SubstituteHistoryBadge extends StatelessWidget {
   /// pastille reste neutre.
   final Color? color;
 
+  /// Pastille pleine de la couleur [color], texte foncé (« 1.0 » en direct).
+  final bool solid;
+
   @override
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
     const base = Color(0xFF2E3A59);
     final accent = color;
+    final filled = solid && accent != null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
         color: accent == null
             ? base
-            : Color.alphaBlend(accent.withValues(alpha: .22), base),
+            : filled
+                ? accent
+                : Color.alphaBlend(accent.withValues(alpha: .22), base),
         borderRadius: BorderRadius.circular(6),
         border: accent == null
             ? Border.all(color: Colors.white70, width: .8)
@@ -681,8 +688,8 @@ class SubstituteHistoryBadge extends StatelessWidget {
       ),
       child: Text(
         label ?? '$count',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: filled ? const Color(0xFF041224) : Colors.white,
           fontSize: 9,
           fontWeight: FontWeight.w400,
           height: 1,

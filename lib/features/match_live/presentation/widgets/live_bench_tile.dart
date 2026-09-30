@@ -30,7 +30,7 @@ class LiveBenchTile extends StatelessWidget {
   final int timesBenched;
 
   /// Repère de la dernière sortie du joueur. `null` s'il n'est jamais sorti
-  /// du terrain (remplaçant au coup d'envoi) : seul le compteur s'affiche.
+  /// du terrain (remplaçant au coup d'envoi) : la pastille affiche « 1.0 ».
   final SubstitutionExitMark? lastExit;
   final VoidCallback? onTap;
 
@@ -57,11 +57,12 @@ class LiveBenchTile extends StatelessWidget {
                   bottom: -2,
                   child: SubstituteHistoryBadge(
                     count: timesBenched,
-                    label: lastExit?.label,
+                    label: liveBenchLabel(lastExit, timesBenched),
                     color: switch (lastExit) {
                       final exit? => substitutionSalvoColorAt(exit.colorIndex),
-                      null => null,
+                      null => substitutionStartColor,
                     },
+                    solid: lastExit == null,
                   ),
                 ),
             ],

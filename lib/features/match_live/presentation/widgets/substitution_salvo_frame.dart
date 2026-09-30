@@ -18,6 +18,10 @@ const substitutionSalvoPalette = <Color>[
   Color(0xFF9CCC65), // vert clair
 ];
 
+/// Couleur du « 1.0 » : joueur passé par le banc sans en être jamais sorti.
+/// Elle n'appartient à aucune salve.
+const substitutionStartColor = Colors.white;
+
 Color substitutionSalvoColor(SubstitutionSalvo salvo) =>
     substitutionSalvoColorAt(salvo.colorIndex);
 

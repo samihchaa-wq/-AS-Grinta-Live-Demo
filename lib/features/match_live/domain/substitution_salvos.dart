@@ -147,6 +147,12 @@ Map<MatchLiveEvent, SubstitutionSalvo> substitutionSalvosByEvent(
   return result;
 }
 
+/// Texte de la pastille d'un joueur passé par le banc : le repère de sa
+/// dernière sortie, ou « 1.0 » s'il n'est jamais sorti du terrain (remplaçant
+/// au coup d'envoi, ou ajouté en cours de match).
+String liveBenchLabel(SubstitutionExitMark? lastExit, int timesBenched) =>
+    lastExit?.label ?? '$timesBenched.0';
+
 /// Repère de la dernière sortie de chaque joueur, par identifiant.
 Map<String, SubstitutionExitMark> lastExitMarksByParticipant(
   Iterable<MatchLiveEvent> events,

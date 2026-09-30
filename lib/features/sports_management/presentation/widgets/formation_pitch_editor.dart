@@ -199,6 +199,7 @@ class FormationPitchEditor extends StatefulWidget {
     this.finishedBenchCounts = const {},
     this.benchLabels = const {},
     this.benchColors = const {},
+    this.solidBenchBadges = const {},
     this.markerMetrics,
   });
 
@@ -219,6 +220,9 @@ class FormationPitchEditor extends StatefulWidget {
 
   /// Couleur de la pastille, par participantId (salve de la dernière sortie).
   final Map<String, Color> benchColors;
+
+  /// Joueurs dont la pastille est pleine (« 1.0 » en direct).
+  final Set<String> solidBenchBadges;
 
   /// Taille imposée des marqueurs. Renseignée quand un autre bloc (le banc du
   /// Tableau Blanc) doit afficher exactement les mêmes vignettes ; sinon elle
@@ -603,6 +607,8 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                               count: finishedBenchCount,
                               label: benchLabel,
                               color: widget.benchColors[entry.participantId],
+                              solid: widget.solidBenchBadges
+                                  .contains(entry.participantId),
                             ),
                           ),
                       ],
