@@ -423,10 +423,28 @@ class _LiveScore extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          shortName,
-          style: theme.textTheme.labelSmall?.copyWith(letterSpacing: .5),
-        ),
+        // Mode match : nom complet en blanc, sur toute la largeur de son bloc
+        // (du « − » au « + »), réduit s'il est trop long.
+        if (wide)
+          SizedBox(
+            width: double.infinity,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                fullName,
+                maxLines: 1,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          )
+        else
+          Text(
+            shortName,
+            style: theme.textTheme.labelSmall?.copyWith(letterSpacing: .5),
+          ),
         Row(
           mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
           mainAxisAlignment:
