@@ -36,7 +36,7 @@ class DemoMatchPage extends ConsumerWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         const SnackBar(
-          content: Text('Démo : seul l’onglet Live est disponible.'),
+          content: Text('Démo : seul le Live est disponible.'),
         ),
       );
   }
@@ -88,18 +88,9 @@ class DemoMatchPage extends ConsumerWidget {
           children: [
             // Onglet Live : pas d'encadré du match en haut, pour laisser la
             // place au direct (les autres onglets le gardent dans l'appli).
-            SegmentedButton<String>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(value: 'info', label: Text('Info')),
-                ButtonSegment(value: 'effectif', label: Text('Effectif')),
-                ButtonSegment(value: 'composition', label: Text('Compo')),
-                ButtonSegment(value: 'live', label: Text('Live')),
-              ],
-              selected: const {'live'},
-              onSelectionChanged: (_) => _unavailable(context),
-            ),
-            const SizedBox(height: AppSpacing.sectionGap),
+            // À partir de 15 minutes avant le coup d'envoi, la barre
+            // Info / Effectif / Compo / Prono disparaît : le Live occupe toute
+            // la fiche (barre Spectateur | Piloter pour les coachs).
             MatchLiveTab(
               key: ValueKey(ref.watch(_demoRunProvider)),
               matchId: matchId,
