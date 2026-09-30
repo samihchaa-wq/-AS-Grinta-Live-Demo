@@ -397,6 +397,7 @@ class _BenchColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final lastExits = lastExitMarksByParticipant(bundle.events);
     return SizedBox(
       width: metrics.width + _benchColumnMargin,
       child: Card(
@@ -456,6 +457,7 @@ class _BenchColumn extends StatelessWidget {
                             timesBenched: bundle.timesBenched(
                               entry.participantId,
                             ),
+                            lastExit: lastExits[entry.participantId],
                           ),
                         );
                       },
@@ -603,6 +605,8 @@ class _LiveJournal extends StatelessWidget {
   Widget build(BuildContext context) {
     final ordered = events.reversed.toList();
     final latest = ordered.isEmpty ? null : ordered.first;
+    final salvos = substitutionSalvosByEvent(events);
+    final marks = substitutionExitMarksByEvent(events);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -660,38 +664,80 @@ class _LiveJournal extends StatelessWidget {
             )
           else if (!expanded) ...[
             const Divider(height: 1),
-            _JournalEventRow(
-              event: latest,
-              canEdit: false,
-              canEditScorer: canEdit,
-              onEditScorer: onEditScorer,
-              onEditAssist: onEditAssist,
-              onDelete: onDelete,
-            ),
-          ] else ...[
-            const Divider(height: 1),
-            for (var index = 0; index < ordered.length; index++) ...[
+            _framed(
+              salvos[latest],
               _JournalEventRow(
-                event: ordered[index],
-                canEdit: canEdit,
+                event: latest,
+                mark: marks[latest],
+                canEdit: false,
                 canEditScorer: canEdit,
                 onEditScorer: onEditScorer,
                 onEditAssist: onEditAssist,
                 onDelete: onDelete,
               ),
-              if (index != ordered.length - 1)
-                const Divider(height: 1, indent: 48),
-            ],
+            ),
+          ] else ...[
+            const Divider(height: 1),
+            ..._expandedRows(ordered, salvos, marks),
           ],
         ],
       ),
     );
+  }
+
+  Widget _framed(SubstitutionSalvo? salvo, Widget child) => salvo == null
+      ? child
+      : SubstitutionSalvoFrame(
+          salvo: salvo,
+          margin: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+          child: child,
+        );
+
+  /// Liste dépliée : les remplacements consécutifs d'une même salve partagent
+  /// un encadré coloré, les autres lignes restent séparées par un trait.
+  List<Widget> _expandedRows(
+    List<MatchLiveEvent> ordered,
+    Map<MatchLiveEvent, SubstitutionSalvo> salvos,
+    Map<MatchLiveEvent, SubstitutionExitMark> marks,
+  ) {
+    Widget row(MatchLiveEvent event) => _JournalEventRow(
+          event: event,
+          mark: marks[event],
+          canEdit: canEdit,
+          canEditScorer: canEdit,
+          onEditScorer: onEditScorer,
+          onEditAssist: onEditAssist,
+          onDelete: onDelete,
+        );
+
+    final widgets = <Widget>[];
+    var index = 0;
+    while (index < ordered.length) {
+      if (widgets.isNotEmpty) {
+        widgets.add(const Divider(height: 1, indent: 48));
+      }
+      final salvo = salvos[ordered[index]];
+      if (salvo == null) {
+        widgets.add(row(ordered[index]));
+        index += 1;
+        continue;
+      }
+      final group = <Widget>[];
+      while (
+          index < ordered.length && identical(salvos[ordered[index]], salvo)) {
+        group.add(row(ordered[index]));
+        index += 1;
+      }
+      widgets.add(_framed(salvo, Column(children: group)));
+    }
+    return widgets;
   }
 }
 
 class _JournalEventRow extends StatelessWidget {
   const _JournalEventRow({
     required this.event,
+    this.mark,
     required this.canEdit,
     required this.canEditScorer,
     required this.onEditScorer,
@@ -700,6 +746,9 @@ class _JournalEventRow extends StatelessWidget {
   });
 
   final MatchLiveEvent event;
+
+  /// Repère du joueur qui sort : il remplace l'icône. `null` sur un but.
+  final SubstitutionExitMark? mark;
   final bool canEdit;
   final bool canEditScorer;
   final ValueChanged<MatchLiveEvent> onEditScorer;
@@ -735,116 +784,191 @@ class _JournalEventRow extends StatelessWidget {
     final canChooseScorer = canEditScorer &&
         event.type == MatchLiveEventType.goalUs &&
         event.needsScorer;
+    final isSubstitution = event.type == MatchLiveEventType.substitution;
+    final isOpponentGoal = event.type == MatchLiveEventType.goalThem;
+    final goalIndent =
+        (MediaQuery.sizeOf(context).width * .12).clamp(36.0, 64.0).toDouble();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 36,
-            child: Text(
-              "${event.minute}'",
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ),
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: AppSpacing.contentGap),
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(6),
-              onTap: canChooseScorer ? () => onEditScorer(event) : null,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(
-                  label,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: canChooseScorer
-                      ? theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w400,
-                          decoration: TextDecoration.underline,
-                        )
-                      : theme.textTheme.bodyMedium,
+    Widget actions() => PopupMenuButton<_JournalAction>(
+          tooltip: 'Corriger',
+          onSelected: (action) {
+            switch (action) {
+              case _JournalAction.scorer:
+                onEditScorer(event);
+              case _JournalAction.assist:
+                onEditAssist(event);
+              case _JournalAction.delete:
+                onDelete(event);
+            }
+          },
+          itemBuilder: (context) => [
+            if (event.type == MatchLiveEventType.goalUs)
+              PopupMenuItem(
+                value: _JournalAction.scorer,
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_search_rounded),
+                    const SizedBox(width: AppSpacing.contentGap),
+                    Text(
+                      event.needsScorer
+                          ? 'Choisir le buteur'
+                          : 'Corriger le buteur',
+                    ),
+                  ],
                 ),
               ),
+            if (event.type == MatchLiveEventType.goalUs &&
+                event.scorerParticipantId != null)
+              PopupMenuItem(
+                value: _JournalAction.assist,
+                child: Row(
+                  children: [
+                    const Icon(Icons.emoji_events_outlined),
+                    const SizedBox(width: AppSpacing.contentGap),
+                    Text(
+                      event.assistName == null
+                          ? 'Ajouter la passe décisive'
+                          : 'Corriger la passe décisive',
+                    ),
+                  ],
+                ),
+              ),
+            const PopupMenuItem(
+              value: _JournalAction.delete,
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline_rounded),
+                  SizedBox(width: AppSpacing.contentGap),
+                  Text('Retirer'),
+                ],
+              ),
             ),
-          ),
-          if (hasScore) ...[
-            const SizedBox(width: AppSpacing.contentGap),
+          ],
+        );
+
+    if (isSubstitution) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(6, 5, 6, 5),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 32,
+              child: mark == null ? null : SubstitutionExitBadge(mark: mark!),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: LiveSubstitutionLine(
+                playerInName: event.playerInName ?? '?',
+                playerOutName: event.playerOutName ?? '?',
+              ),
+            ),
+            const SizedBox(width: 4),
             Text(
-              '${event.scoreAsGrintaAfter} - ${event.scoreAdverseAfter}',
-              textAlign: TextAlign.center,
+              "${event.minute}'",
               style: theme.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w400,
               ),
             ),
+            if (canEdit) ...[
+              const SizedBox(width: 2),
+              actions(),
+            ],
           ],
-          if (canEdit) ...[
-            const SizedBox(width: 2),
-            PopupMenuButton<_JournalAction>(
-              tooltip: 'Corriger',
-              onSelected: (action) {
-                switch (action) {
-                  case _JournalAction.scorer:
-                    onEditScorer(event);
-                  case _JournalAction.assist:
-                    onEditAssist(event);
-                  case _JournalAction.delete:
-                    onDelete(event);
-                }
-              },
-              itemBuilder: (context) => [
-                if (event.type == MatchLiveEventType.goalUs)
-                  PopupMenuItem(
-                    value: _JournalAction.scorer,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person_search_rounded),
-                        const SizedBox(width: AppSpacing.contentGap),
-                        Text(
-                          event.needsScorer
-                              ? 'Choisir le buteur'
-                              : 'Corriger le buteur',
-                        ),
-                      ],
+        ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(8, 7, 8, 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: isOpponentGoal
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: isOpponentGoal ? 0 : goalIndent,
                     ),
-                  ),
-                if (event.type == MatchLiveEventType.goalUs &&
-                    event.scorerParticipantId != null)
-                  PopupMenuItem(
-                    value: _JournalAction.assist,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.emoji_events_outlined),
-                        const SizedBox(width: AppSpacing.contentGap),
-                        Text(
-                          event.assistName == null
-                              ? 'Ajouter la passe décisive'
-                              : 'Corriger la passe décisive',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: canChooseScorer ? () => onEditScorer(event) : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(icon, size: 20, color: color),
+                            const SizedBox(width: 8),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(
+                                maxWidth: constraints.maxWidth * .52,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: isOpponentGoal
+                                    ? CrossAxisAlignment.end
+                                    : CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    label,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: isOpponentGoal
+                                        ? TextAlign.right
+                                        : TextAlign.left,
+                                    style: canChooseScorer
+                                        ? theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.primary,
+                                            fontWeight: FontWeight.w400,
+                                            decoration:
+                                                TextDecoration.underline,
+                                          )
+                                        : theme.textTheme.bodyMedium,
+                                  ),
+                                  if (hasScore)
+                                    Text(
+                                      '${event.scoreAsGrintaAfter}-'
+                                      '${event.scoreAdverseAfter}',
+                                      textAlign: isOpponentGoal
+                                          ? TextAlign.right
+                                          : TextAlign.left,
+                                      style:
+                                          theme.textTheme.labelMedium?.copyWith(
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                const PopupMenuItem(
-                  value: _JournalAction.delete,
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline_rounded),
-                      SizedBox(width: AppSpacing.contentGap),
-                      Text('Retirer'),
-                    ],
                   ),
                 ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "${event.minute}'",
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              if (canEdit) ...[
+                const SizedBox(width: 2),
+                actions(),
               ],
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

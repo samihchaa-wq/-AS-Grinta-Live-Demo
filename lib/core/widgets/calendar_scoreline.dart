@@ -345,13 +345,23 @@ class CalendarCardActionsOverlay extends StatelessWidget {
     super.key,
     required this.child,
     this.actions,
+    this.actionsWidth = actionExtent,
   });
 
   final Widget child;
   final Widget? actions;
+  final double actionsWidth;
 
-  /// Espace à laisser libre à droite de la date quand un bouton est affiché.
+  /// Largeur réservée à une action (cloche, crayon…).
+  static const double actionExtent = 40;
+
+  /// Espace à laisser libre à droite de la date pour une action.
   static const double dateInset = 34;
+
+  static double dateInsetFor(int actionCount) {
+    if (actionCount <= 0) return 0;
+    return dateInset + (actionCount - 1) * actionExtent;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -363,7 +373,11 @@ class CalendarCardActionsOverlay extends StatelessWidget {
         Positioned(
           top: 2,
           right: 2,
-          child: SizedBox.square(dimension: 40, child: actions),
+          child: SizedBox(
+            width: actionsWidth,
+            height: actionExtent,
+            child: actions,
+          ),
         ),
       ],
     );
@@ -396,11 +410,19 @@ class CalendarCardSections extends StatelessWidget {
     required this.header,
     required this.body,
     this.footer,
+    this.bandVerticalPadding = CalendarCardSpacing.band,
+    this.bodyVerticalPadding = CalendarCardSpacing.vertical,
+    this.bandHorizontalPadding = 14,
+    this.bodyHorizontalPadding = 12,
   });
 
   final Widget header;
   final Widget body;
   final Widget? footer;
+  final double bandVerticalPadding;
+  final double bodyVerticalPadding;
+  final double bandHorizontalPadding;
+  final double bodyHorizontalPadding;
 
   /// Voile posé sur la couleur de la carte pour foncer les bandeaux.
   static const Color bandShade = Color(0x47000000);
@@ -410,9 +432,9 @@ class CalendarCardSections extends StatelessWidget {
     Widget band(Widget child) => ColoredBox(
           color: bandShade,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: CalendarCardSpacing.band,
+            padding: EdgeInsets.symmetric(
+              horizontal: bandHorizontalPadding,
+              vertical: bandVerticalPadding,
             ),
             child: child,
           ),
@@ -425,9 +447,9 @@ class CalendarCardSections extends StatelessWidget {
       children: [
         band(header),
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: CalendarCardSpacing.vertical,
+          padding: EdgeInsets.symmetric(
+            horizontal: bodyHorizontalPadding,
+            vertical: bodyVerticalPadding,
           ),
           child: body,
         ),

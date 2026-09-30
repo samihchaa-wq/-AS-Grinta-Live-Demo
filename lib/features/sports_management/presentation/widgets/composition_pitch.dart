@@ -165,6 +165,166 @@ class _CompositionPitchState extends State<CompositionPitch> {
   }
 }
 
+/// Nombre de colonnes du banc compact.
+///
+/// Le terrain garde exactement la même largeur quel que soit le nombre de
+/// remplaçants : seule l'organisation interne de la zone de gauche change.
+int compositionBenchColumnCount(int count) {
+  if (count <= 0) return 0;
+  if (count <= 6) return 1;
+  if (count <= 12) return 2;
+  return 3;
+}
+
+/// Terrain publié avec banc à gauche.
+///
+/// Le rendu part d'un gabarit de référence identique à celui historiquement
+/// utilisé sur les matchs terminés (terrain 340 px + vignettes 60 px), puis
+/// réduit l'ensemble d'un seul bloc si l'écran est plus étroit. Les joueurs
+/// du terrain rétrécissent donc avec le terrain au lieu de conserver une taille
+/// fixe qui finit par les faire se chevaucher.
+///
+/// Le banc reste compact : une colonne jusqu'à 6 remplaçants, deux jusqu'à 12,
+/// trois au-delà. Avec peu de remplaçants, aucune grande zone vide n'est
+/// réservée à gauche ; avec 15 joueurs, le groupe entier se réduit proprement.
+class CompositionPitchWithBench extends StatelessWidget {
+  const CompositionPitchWithBench({
+    super.key,
+    required this.field,
+    required this.bench,
+    this.maxWidth = 520,
+  });
+
+  final List<MatchCompositionEntry> field;
+  final List<MatchCompositionEntry> bench;
+  final double maxWidth;
+
+  static const double _pitchWidth = 340;
+  static const double _pitchHeight = _pitchWidth / .68;
+  static const double _benchCellWidth = 62;
+  static const double _benchColumnGap = 4;
+  static const double _benchRowGap = 10;
+  static const double _pitchGap = 4;
+
+  double _benchWidth(int columns) =>
+      columns * _benchCellWidth + (columns - 1) * _benchColumnGap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bench.isEmpty) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: CompositionPitch(entries: field),
+        ),
+      );
+    }
+
+    final columns = compositionBenchColumnCount(bench.length);
+    final benchWidth = _benchWidth(columns);
+    final referenceWidth = benchWidth + _pitchGap + _pitchWidth;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: referenceWidth,
+            height: _pitchHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: benchWidth,
+                  height: _pitchHeight,
+                  child: _CompositionBench(
+                    entries: bench,
+                    columns: columns,
+                  ),
+                ),
+                const SizedBox(width: _pitchGap),
+                SizedBox(
+                  width: _pitchWidth,
+                  child: CompositionPitch(entries: field),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompositionBench extends StatelessWidget {
+  const _CompositionBench({
+    required this.entries,
+    required this.columns,
+  });
+
+  final List<MatchCompositionEntry> entries;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = (entries.length + columns - 1) ~/ columns;
+
+    return Align(
+      alignment: Alignment.topCenter,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: columns * CompositionPitchWithBench._benchCellWidth +
+              (columns - 1) * CompositionPitchWithBench._benchColumnGap,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var row = 0; row < rows; row++) ...[
+                if (row > 0)
+                  const SizedBox(
+                    height: CompositionPitchWithBench._benchRowGap,
+                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var column = 0; column < columns; column++) ...[
+                      if (column > 0)
+                        const SizedBox(
+                          width: CompositionPitchWithBench._benchColumnGap,
+                        ),
+                      SizedBox(
+                        width: CompositionPitchWithBench._benchCellWidth,
+                        child: Builder(
+                          builder: (context) {
+                            final index = row * columns + column;
+                            if (index >= entries.length) {
+                              return const SizedBox(
+                                width:
+                                    CompositionPitchWithBench._benchCellWidth,
+                                height: 84,
+                              );
+                            }
+                            return CompositionPlayerTile(
+                              entry: entries[index],
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class CompositionPlayerChip extends StatelessWidget {
   const CompositionPlayerChip({
     super.key,
@@ -487,9 +647,12 @@ class AssistBadge extends StatelessWidget {
 }
 
 class SubstituteHistoryBadge extends StatelessWidget {
-  const SubstituteHistoryBadge({super.key, required this.count});
+  const SubstituteHistoryBadge({super.key, required this.count, this.label});
 
   final int count;
+
+  /// Texte affiché à la place du compteur, par exemple « 2.1 » en direct.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -502,7 +665,7 @@ class SubstituteHistoryBadge extends StatelessWidget {
         border: Border.all(color: Colors.white70, width: .8),
       ),
       child: Text(
-        '$count',
+        label ?? '$count',
         style: const TextStyle(
           color: Colors.white,
           fontSize: 9,

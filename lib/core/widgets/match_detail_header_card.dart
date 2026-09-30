@@ -41,6 +41,7 @@ class MatchDetailHeaderCard extends StatelessWidget {
     this.address,
     this.motmActionLabel,
     this.onMotmTap,
+    this.compact = false,
   });
 
   final String homeName;
@@ -61,6 +62,11 @@ class MatchDetailHeaderCard extends StatelessWidget {
   final String? address;
   final String? motmActionLabel;
   final VoidCallback? onMotmTap;
+
+  /// Les fiches de matchs à venir utilisent un en-tête plus serré.
+  /// Les matchs terminés et les archives conservent volontairement
+  /// leur gabarit historique.
+  final bool compact;
 
   bool get _isInternal => matchType == 'entre_nous';
 
@@ -90,6 +96,8 @@ class MatchDetailHeaderCard extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: CalendarCardSections(
+        bandVerticalPadding: compact ? 6 : CalendarCardSpacing.band,
+        bodyVerticalPadding: compact ? 10 : CalendarCardSpacing.vertical,
         header: CalendarDateLine(
           kickoffAt: kickoffAt,
           showTime: showTime,
@@ -112,12 +120,12 @@ class MatchDetailHeaderCard extends StatelessWidget {
                 finished: hasScores,
               ),
             if (showMotmAction) ...[
-              const SizedBox(height: 14),
+              SizedBox(height: compact ? 8 : 14),
               InkWell(
                 onTap: onMotmTap,
                 borderRadius: BorderRadius.circular(10),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: EdgeInsets.symmetric(vertical: compact ? 2 : 4),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
