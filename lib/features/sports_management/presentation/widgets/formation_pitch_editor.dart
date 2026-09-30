@@ -202,6 +202,7 @@ class FormationPitchEditor extends StatefulWidget {
     this.benchLabels = const {},
     this.benchColors = const {},
     this.namesOnly = false,
+    this.aspectRatio = .68,
     this.nameColors = const {},
     this.nameSuffixes = const {},
     this.markerMetrics,
@@ -228,6 +229,10 @@ class FormationPitchEditor extends StatefulWidget {
   /// Affiche seulement le prénom de chaque joueur, sans pastille d'initiales
   /// ni photo (en direct).
   final bool namesOnly;
+
+  /// Largeur / hauteur du terrain. Plus la valeur est grande, moins le
+  /// terrain est haut et plus les lignes de joueurs se rapprochent.
+  final double aspectRatio;
 
   /// Couleur du prénom, par participantId (prochains à sortir, en direct).
   final Map<String, Color> nameColors;
@@ -413,7 +418,7 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 540),
       child: AspectRatio(
-        aspectRatio: .68,
+        aspectRatio: widget.aspectRatio,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final legacyFlat442 = _usesLegacyFlat442Layout(widget.entries);

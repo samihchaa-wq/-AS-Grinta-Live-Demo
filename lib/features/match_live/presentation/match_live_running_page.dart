@@ -191,6 +191,8 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                       },
                   },
                   namesOnly: true,
+                  // Terrain moins haut : les lignes de joueurs se rapprochent.
+                  aspectRatio: .85,
                   nameSuffixes: {
                     for (final MapEntry(:key, :value) in minutesOnField(
                       field: lineup.entriesFor(MatchCompositionZone.field),
