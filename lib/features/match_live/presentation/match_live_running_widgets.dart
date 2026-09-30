@@ -46,7 +46,8 @@ class _LiveHeaderBar extends ConsumerWidget {
     final opponentName = fixture?.opponentName ?? 'Adversaire';
     final grintaIsHome = fixture?.grintaIsHome ?? true;
 
-    _LiveScore team(bool grinta) => _LiveScore(
+    _LiveScore team(bool grinta, {bool wide = false}) => _LiveScore(
+          wide: wide,
           shortName: grinta ? 'ASG' : _shortName(opponentName),
           fullName: grinta ? 'AS Grinta' : opponentName,
           score: grinta ? session.scoreAsGrinta : session.scoreAdverse,
@@ -131,30 +132,27 @@ class _LiveHeaderBar extends ConsumerWidget {
               // Mode match : la ligne ne porte plus que le chrono et le
               // score, étalés sur toute la largeur et agrandis.
               SizedBox(
-                height: 72,
+                height: 76,
                 child: Row(
                   children: [
+                    // Chrono : un cinquième de la ligne.
                     Expanded(
-                      flex: 4,
                       child: FittedBox(
                         fit: BoxFit.contain,
                         alignment: Alignment.centerLeft,
                         child: MatchLiveClock(session: session, compact: true),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
+                    // Score : les quatre cinquièmes restants.
                     Expanded(
-                      flex: 6,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            team(grintaIsHome),
-                            _scoreDash(context),
-                            team(!grintaIsHome),
-                          ],
-                        ),
+                      flex: 4,
+                      child: Row(
+                        children: [
+                          Expanded(child: team(grintaIsHome, wide: true)),
+                          _scoreDash(context),
+                          Expanded(child: team(!grintaIsHome, wide: true)),
+                        ],
                       ),
                     ),
                   ],
@@ -394,7 +392,12 @@ class _LiveScore extends StatelessWidget {
     required this.canEdit,
     required this.onIncrement,
     required this.onDecrement,
+    this.wide = false,
   });
+
+  /// Mode match : « − », score et « + » répartis sur toute la largeur
+  /// disponible, score en grand.
+  final bool wide;
 
   final String shortName;
   final String fullName;
@@ -408,11 +411,15 @@ class _LiveScore extends StatelessWidget {
     final theme = Theme.of(context);
     final number = Text(
       '$score',
-      style: theme.textTheme.headlineSmall?.copyWith(
+      style:
+          (wide ? theme.textTheme.displaySmall : theme.textTheme.headlineSmall)
+              ?.copyWith(
         fontWeight: FontWeight.w500,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
+    final buttonSize = wide ? 40.0 : 30.0;
+    final iconSize = wide ? 28.0 : 22.0;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -421,16 +428,20 @@ class _LiveScore extends StatelessWidget {
           style: theme.textTheme.labelSmall?.copyWith(letterSpacing: .5),
         ),
         Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment:
+              wide ? MainAxisAlignment.spaceEvenly : MainAxisAlignment.center,
           children: [
             if (canEdit)
               IconButton(
                 tooltip: 'Retirer un but à $fullName',
                 onPressed: score > 0 ? onDecrement : null,
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 30, height: 30),
-                iconSize: 22,
+                constraints: BoxConstraints.tightFor(
+                  width: buttonSize,
+                  height: buttonSize,
+                ),
+                iconSize: iconSize,
                 icon: const Icon(Icons.remove_circle_outline_rounded),
               ),
             Padding(
@@ -442,9 +453,11 @@ class _LiveScore extends StatelessWidget {
                 tooltip: 'Ajouter un but à $fullName',
                 onPressed: onIncrement,
                 padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 30, height: 30),
-                iconSize: 22,
+                constraints: BoxConstraints.tightFor(
+                  width: buttonSize,
+                  height: buttonSize,
+                ),
+                iconSize: iconSize,
                 icon: const Icon(Icons.add_circle_outline_rounded),
               ),
           ],
