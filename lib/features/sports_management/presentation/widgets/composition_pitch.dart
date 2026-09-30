@@ -708,7 +708,6 @@ class PlayerAvatar extends StatefulWidget {
     this.isGoalkeeper = false,
     this.size = 52,
     this.fallbackScale = .84,
-    this.ringColor,
   });
 
   final String? photoUrl;
@@ -725,10 +724,6 @@ class PlayerAvatar extends StatefulWidget {
   /// carré est volontairement plus petit pour ne jamais dominer ni déborder
   /// visuellement sur les compositions compactes.
   final double fallbackScale;
-
-  /// Contour de mise en évidence, à la place du contour habituel (joueur
-  /// signalé en direct).
-  final Color? ringColor;
 
   @override
   State<PlayerAvatar> createState() => _PlayerAvatarState();
@@ -814,11 +809,7 @@ class _PlayerAvatarState extends State<PlayerAvatar> {
           height: visualSize,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(visualSize * 0.28),
-            border: widget.ringColor != null
-                ? Border.all(color: widget.ringColor!, width: 3)
-                : showPhoto
-                    ? null
-                    : Border.all(color: border, width: 2),
+            border: showPhoto ? null : Border.all(color: border, width: 2),
           ),
           clipBehavior: Clip.antiAlias,
           child: showPhoto ? _photo(url) : _initials(visualSize),

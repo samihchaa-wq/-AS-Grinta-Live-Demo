@@ -188,9 +188,6 @@ class FormationMarkerMetrics {
   double get nameHeight => nameFontSize * 1.35 + 2;
 }
 
-/// Contour des joueurs signalés sur le terrain depuis le plus longtemps.
-const longestOnFieldRingColor = Color(0xFFE53935);
-
 class FormationPitchEditor extends StatefulWidget {
   const FormationPitchEditor({
     super.key,
@@ -203,7 +200,8 @@ class FormationPitchEditor extends StatefulWidget {
     this.benchLabels = const {},
     this.benchColors = const {},
     this.solidBenchBadges = const {},
-    this.alertedParticipants = const {},
+    this.namesOnly = false,
+    this.nameColors = const {},
     this.markerMetrics,
   });
 
@@ -228,9 +226,12 @@ class FormationPitchEditor extends StatefulWidget {
   /// Joueurs dont la pastille est pleine (« 1.0 » en direct).
   final Set<String> solidBenchBadges;
 
-  /// Joueurs entourés en rouge, à titre informatif (sur le terrain depuis le
-  /// plus longtemps, en direct).
-  final Set<String> alertedParticipants;
+  /// Affiche seulement le prénom de chaque joueur, sans pastille d'initiales
+  /// ni photo (en direct).
+  final bool namesOnly;
+
+  /// Couleur du prénom, par participantId (prochains à sortir, en direct).
+  final Map<String, Color> nameColors;
 
   /// Taille imposée des marqueurs. Renseignée quand un autre bloc (le banc du
   /// Tableau Blanc) doit afficher exactement les mêmes vignettes ; sinon elle
@@ -594,60 +595,73 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                         ]
                       : null,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        PlayerAvatar(
-                          photoUrl: entry.photoUrl,
-                          name: entry.displayName,
-                          lastName: entry.lastInitial,
-                          isGoalkeeper: entry.isGoalkeeper,
-                          size: avatarSize,
-                          ringColor: widget.alertedParticipants
-                                  .contains(entry.participantId)
-                              ? longestOnFieldRingColor
-                              : null,
-                        ),
-                        if (finishedBenchCount > 0)
-                          Positioned(
-                            right: -2,
-                            top: -2,
-                            child: SubstituteHistoryBadge(
-                              count: finishedBenchCount,
-                              label: benchLabel,
-                              color: widget.benchColors[entry.participantId],
-                              solid: widget.solidBenchBadges
-                                  .contains(entry.participantId),
+                child: widget.namesOnly
+                    ? _nameOnlyMarker(
+                        entry: entry,
+                        width: width,
+                        height: avatarSize + 2 + metrics.nameHeight,
+                        fontSize: nameFontSize,
+                        badge: finishedBenchCount > 0
+                            ? SubstituteHistoryBadge(
+                                count: finishedBenchCount,
+                                label: benchLabel,
+                                color: widget.benchColors[entry.participantId],
+                                solid: widget.solidBenchBadges
+                                    .contains(entry.participantId),
+                              )
+                            : null,
+                      )
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              PlayerAvatar(
+                                photoUrl: entry.photoUrl,
+                                name: entry.displayName,
+                                lastName: entry.lastInitial,
+                                isGoalkeeper: entry.isGoalkeeper,
+                                size: avatarSize,
+                              ),
+                              if (finishedBenchCount > 0)
+                                Positioned(
+                                  right: -2,
+                                  top: -2,
+                                  child: SubstituteHistoryBadge(
+                                    count: finishedBenchCount,
+                                    label: benchLabel,
+                                    color:
+                                        widget.benchColors[entry.participantId],
+                                    solid: widget.solidBenchBadges
+                                        .contains(entry.participantId),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          // Prénom sur fond translucide sous la photo, comme sur
+                          // la composition d'un match terminé : jamais posé sur le
+                          // visage, et lisible même par-dessus les tracés blancs
+                          // du terrain. L'étiquette a le droit d'être plus large que
+                          // le marqueur pour ne pas tronquer les prénoms longs.
+                          SizedBox(
+                            width: width,
+                            height: metrics.nameHeight,
+                            child: OverflowBox(
+                              minWidth: 0,
+                              maxWidth: metrics.nameMaxWidth,
+                              minHeight: 0,
+                              maxHeight: double.infinity,
+                              alignment: Alignment.topCenter,
+                              child: PitchPlayerName(
+                                label: entry.displayName.trim(),
+                                fontSize: nameFontSize,
+                              ),
                             ),
                           ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    // Prénom sur fond translucide sous la photo, comme sur
-                    // la composition d'un match terminé : jamais posé sur le
-                    // visage, et lisible même par-dessus les tracés blancs
-                    // du terrain. L'étiquette a le droit d'être plus large que
-                    // le marqueur pour ne pas tronquer les prénoms longs.
-                    SizedBox(
-                      width: width,
-                      height: metrics.nameHeight,
-                      child: OverflowBox(
-                        minWidth: 0,
-                        maxWidth: metrics.nameMaxWidth,
-                        minHeight: 0,
-                        maxHeight: double.infinity,
-                        alignment: Alignment.topCenter,
-                        child: PitchPlayerName(
-                          label: entry.displayName.trim(),
-                          fontSize: nameFontSize,
-                        ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
           );
@@ -667,6 +681,41 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
             child: marker,
           );
         },
+      ),
+    );
+  }
+
+  /// Marqueur du mode prénoms seuls : le prénom au centre de la place du
+  /// joueur (même encombrement qu'avec la pastille, pour ne rien décaler), et
+  /// le repère « passage.série » juste dessous : au-dessus ou à côté, il
+  /// serait coupé pour les joueurs placés en bord de terrain.
+  Widget _nameOnlyMarker({
+    required MatchCompositionEntry entry,
+    required double width,
+    required double height,
+    required double fontSize,
+    required Widget? badge,
+  }) {
+    final color = widget.nameColors[entry.participantId];
+    return SizedBox(
+      width: width,
+      height: height,
+      child: OverflowBox(
+        minWidth: 0,
+        maxWidth: FormationMarkerMetrics(width).nameMaxWidth,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            PitchPlayerName(
+              label: entry.displayName.trim(),
+              fontSize: fontSize * 1.15,
+              color: color ?? Colors.white,
+              fontWeight: color == null ? FontWeight.w400 : FontWeight.w700,
+            ),
+            if (badge != null) ...[const SizedBox(height: 2), badge],
+          ],
+        ),
       ),
     );
   }

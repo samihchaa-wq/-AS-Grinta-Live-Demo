@@ -220,10 +220,18 @@ class FootballPitchPainter extends CustomPainter {
 /// tracés blancs — lignes de surface — le texte ombré se confondait avec le
 /// décor : le nom du gardien devenait illisible.
 class PitchPlayerName extends StatelessWidget {
-  const PitchPlayerName({super.key, required this.label, this.fontSize = 11});
+  const PitchPlayerName({
+    super.key,
+    required this.label,
+    this.fontSize = 11,
+    this.color = Colors.white,
+    this.fontWeight = FontWeight.w400,
+  });
 
   final String label;
   final double fontSize;
+  final Color color;
+  final FontWeight fontWeight;
 
   @override
   Widget build(BuildContext context) {
@@ -243,9 +251,9 @@ class PitchPlayerName extends StatelessWidget {
             maxLines: 1,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white,
+              color: color,
               fontSize: fontSize,
-              fontWeight: FontWeight.w400,
+              fontWeight: fontWeight,
             ),
           ),
         ),

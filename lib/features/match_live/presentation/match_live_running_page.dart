@@ -1,7 +1,7 @@
 import 'package:as_grinta/core/theme/app_spacing.dart';
 import 'package:as_grinta/core/utils/app_formats.dart';
 import 'package:as_grinta/core/widgets/grinta_loader.dart';
-import 'package:as_grinta/features/match_live/domain/longest_on_field.dart';
+import 'package:as_grinta/features/match_live/domain/next_out_players.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_event.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_formation.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_session.dart';
@@ -193,6 +193,17 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
           builder: (context, constraints) {
             final metrics = benchAndPitchMetrics(constraints.maxWidth);
             final lastExits = lastExitMarksByParticipant(bundle.events);
+            // Prochains à sortir : calculés sur la composition enregistrée,
+            // et masqués pendant la préparation d'une salve.
+            final nextOut = _pending.isNotEmpty
+                ? NextOutPlayers.none
+                : nextOutPlayers(
+                    field: lineup.entriesFor(MatchCompositionZone.field),
+                    events: bundle.events,
+                    substituteCounts: bundle.substituteCounts,
+                    benchCount:
+                        lineup.entriesFor(MatchCompositionZone.bench).length,
+                  );
             return IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,17 +237,12 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                             null => substitutionStartColor,
                           },
                       },
-                      // Calculé sur la composition enregistrée : un
-                      // remplacement en cours de préparation ne compte pas
-                      // tant qu'il n'est pas validé.
-                      alertedParticipants: longestOnFieldParticipants(
-                        field: lineup.entriesFor(MatchCompositionZone.field),
-                        events: bundle.events,
-                        substituteCounts: bundle.substituteCounts,
-                        benchCount: lineup
-                            .entriesFor(MatchCompositionZone.bench)
-                            .length,
-                      ),
+                      namesOnly: true,
+                      nameColors: {
+                        for (final id in nextOut.sure) id: nextOutSureColor,
+                        for (final id in nextOut.toChoose)
+                          id: nextOutToChooseColor,
+                      },
                       solidBenchBadges: {
                         for (final key in bundle.substituteCounts.keys)
                           if (lastExits[key] == null) key,

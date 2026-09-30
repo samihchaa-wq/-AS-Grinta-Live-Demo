@@ -41,47 +41,42 @@ class LiveBenchTile extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              PlayerAvatar(
-                photoUrl: entry.photoUrl,
-                name: entry.displayName,
-                lastName: entry.lastInitial,
-                isGoalkeeper: entry.isGoalkeeper,
-                size: metrics.avatarSize,
-              ),
-              if (timesBenched > 0)
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: SubstituteHistoryBadge(
-                    count: timesBenched,
-                    label: liveBenchLabel(lastExit, timesBenched),
-                    color: switch (lastExit) {
-                      final exit? => substitutionSalvoColorAt(exit.colorIndex),
-                      null => substitutionStartColor,
-                    },
-                    solid: lastExit == null,
+          // Comme sur le terrain en direct : seulement le prénom, à la place
+          // qu'occupait la pastille, avec le repère « passage.série » dessous.
+          SizedBox(
+            height: metrics.avatarSize,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  entry.displayName,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: metrics.nameFontSize * 1.15,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          // La colonne du banc est collée au bord de l'écran : le prénom ne
-          // peut pas déborder comme sur le terrain. Il est donc réduit juste
-          // ce qu'il faut plutôt que coupé (« Franç… »).
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              entry.displayName,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: metrics.nameFontSize,
-                fontWeight: FontWeight.w400,
               ),
             ),
+          ),
+          const SizedBox(height: 2),
+          SizedBox(
+            height: metrics.nameHeight,
+            child: timesBenched <= 0
+                ? null
+                : Center(
+                    child: SubstituteHistoryBadge(
+                      count: timesBenched,
+                      label: liveBenchLabel(lastExit, timesBenched),
+                      color: switch (lastExit) {
+                        final exit? =>
+                          substitutionSalvoColorAt(exit.colorIndex),
+                        null => substitutionStartColor,
+                      },
+                      solid: lastExit == null,
+                    ),
+                  ),
           ),
         ],
       ),
