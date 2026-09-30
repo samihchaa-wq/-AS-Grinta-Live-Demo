@@ -259,6 +259,41 @@ class _MatchModeAction extends StatelessWidget {
   }
 }
 
+/// Barre du bas du mode match : un but d'AS Grinta attend son buteur.
+class _GoalToAttributeBar extends StatelessWidget {
+  const _GoalToAttributeBar({required this.event, required this.onChoose});
+
+  final MatchLiveEvent event;
+  final VoidCallback onChoose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.sports_soccer_rounded),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'But à la ${AppFormats.ordinalFeminine(event.minute)} '
+                'minute · buteur à désigner',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton(onPressed: onChoose, child: const Text('Choisir')),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Trois premières lettres du nom, en capitales (« TOU » pour Toulouse).
 String _shortName(String name) {
   final letters = name.replaceAll(RegExp(r'[^A-Za-zÀ-ÿ]'), '');
@@ -742,7 +777,7 @@ class _JournalEventRow extends StatelessWidget {
     final (icon, color, label) = switch (event.type) {
       MatchLiveEventType.goalUs => (
           Icons.sports_soccer_rounded,
-          theme.colorScheme.primary,
+          theme.colorScheme.onSurface,
           event.isOpponentOwnGoal
               ? 'But AS Grinta · CSC adverse'
               : 'But AS Grinta · ${event.scorerName ?? 'Buteur à désigner'}'
@@ -904,14 +939,7 @@ class _JournalEventRow extends StatelessWidget {
                                     textAlign: isOpponentGoal
                                         ? TextAlign.right
                                         : TextAlign.left,
-                                    style: canChooseScorer
-                                        ? theme.textTheme.bodyMedium?.copyWith(
-                                            color: theme.colorScheme.primary,
-                                            fontWeight: FontWeight.w400,
-                                            decoration:
-                                                TextDecoration.underline,
-                                          )
-                                        : theme.textTheme.bodyMedium,
+                                    style: theme.textTheme.bodyMedium,
                                   ),
                                   if (hasScore)
                                     Text(

@@ -307,6 +307,10 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     final session = bundle.session;
     final canGoHalftime =
         session.half == 1 && session.state != MatchLiveState.halftime;
+    final goalsToAttribute = [
+      for (final event in bundle.events)
+        if (event.type == MatchLiveEventType.goalUs && event.needsScorer) event,
+    ];
 
     return Column(
       children: [
@@ -408,7 +412,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
             child: pitchArea,
           ),
         ),
-        if (canEdit && _pending.isNotEmpty)
+        if (canEdit && (_pending.isNotEmpty || goalsToAttribute.isNotEmpty))
           Material(
             elevation: 8,
             color: Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -416,13 +420,36 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-                child: _PendingSubstitutions(
-                  pending: _pending,
-                  nameOf: (participantId) => _nameOf(lineup, participantId),
-                  busy: _saving,
-                  onRemove: (pair) => setState(() => _pending.remove(pair)),
-                  onClear: () => setState(_pending.clear),
-                  onValidate: () => _validatePending(lineup, controller),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Buts d'AS Grinta sans buteur : un appui pour désigner
+                    // le buteur puis le passeur.
+                    for (final event in goalsToAttribute)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _GoalToAttributeBar(
+                          event: event,
+                          onChoose: () => _pickGoalScorer(
+                            context,
+                            controller,
+                            event,
+                            scorerCandidates,
+                          ),
+                        ),
+                      ),
+                    if (_pending.isNotEmpty)
+                      _PendingSubstitutions(
+                        pending: _pending,
+                        nameOf: (participantId) =>
+                            _nameOf(lineup, participantId),
+                        busy: _saving,
+                        onRemove: (pair) =>
+                            setState(() => _pending.remove(pair)),
+                        onClear: () => setState(_pending.clear),
+                        onValidate: () => _validatePending(lineup, controller),
+                      ),
+                  ],
                 ),
               ),
             ),
