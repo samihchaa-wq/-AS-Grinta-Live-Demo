@@ -79,10 +79,6 @@ Future<MatchCompositionEntry?> showMatchLiveRemovePlayerPicker(
     context: context,
     builder: (dialogContext) => AlertDialog(
       title: Text('Retirer ${chosen.displayName} ?'),
-      content: const Text(
-        'Il ne sera plus sur la feuille de match. Tu pourras le remettre avec '
-        '« Ajouter un joueur ».',
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),

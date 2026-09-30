@@ -41,10 +41,6 @@ class DemoMatchPage extends ConsumerWidget {
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Recommencer la démo ?'),
-            content: const Text(
-              'Le match revient avant le coup d’envoi, avec la composition '
-              'de départ. Rien n’est jamais enregistré dans l’application.',
-            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),

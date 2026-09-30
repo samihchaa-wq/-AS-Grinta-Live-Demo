@@ -937,15 +937,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     MatchLiveStateController controller,
     MatchLiveEvent event,
   ) async {
-    final description = switch (event.type) {
-      MatchLiveEventType.goalUs => event.isOpponentOwnGoal
-          ? "But AS Grinta (CSC adverse) · ${event.minute}'"
-          : "But AS Grinta · ${event.scorerName ?? 'buteur à désigner'} · "
-              "${event.minute}'",
-      MatchLiveEventType.goalThem => "But adverse · ${event.minute}'",
-      MatchLiveEventType.substitution => '${event.playerInName ?? '?'} entre · '
-          '${event.playerOutName ?? '?'} sort · ${event.minute}\'',
-    };
     final title = event.type == MatchLiveEventType.substitution
         ? 'Retirer ce remplacement ?'
         : 'Retirer ce but ?';
@@ -954,7 +945,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(title),
-        content: Text(description),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -976,20 +966,10 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     BuildContext context,
     MatchLiveStateController controller,
   ) async {
-    final planned = bundle.session.planPlannedDurationMinutes;
-    final target = Duration(seconds: planned * 30);
-    final minutes = target.inMinutes.toString().padLeft(2, '0');
-    final seconds = (target.inSeconds % 60).toString().padLeft(2, '0');
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Passer à la mi-temps ?'),
-        content: Text(
-          'Le chronomètre sera calé sur $minutes:$seconds — la moitié des '
-          '$planned minutes de jeu prévues — puis mis en pause.\n\n'
-          'Le temps affiché actuellement sera donc remplacé.',
-        ),
+        title: const Text('Mi-temps ?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -1014,8 +994,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Fin du match'),
-        content: const Text('Êtes-vous sûr de vouloir finir le match ?'),
+        title: const Text('Fin du match ?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -1037,29 +1016,10 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     BuildContext context,
     MatchLiveStateController controller,
   ) async {
-    final goals = bundle.ownGoals.length + bundle.opponentGoals.length;
-    final substitutions = bundle.substitutions.length;
-    final details = [
-      if (goals > 0) goals == 1 ? '1 but' : '$goals buts',
-      if (substitutions > 0)
-        substitutions == 1 ? '1 remplacement' : '$substitutions remplacements',
-    ];
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Recommencer le match ?'),
-        content: Text(
-          details.isEmpty
-              ? 'Le chronomètre et le score repartent à zéro, et la '
-                  'composition redevient celle du coup d’envoi.\n\n'
-                  'Cette action est définitive.'
-              : 'Tout ce qui a été saisi sera effacé : ${details.join(' et ')}, '
-                  'le chronomètre et le score.\n\n'
-                  'La composition redevient celle du coup d’envoi et tu '
-                  'reviens à l’écran de préparation.\n\n'
-                  'Cette action est définitive.',
-        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

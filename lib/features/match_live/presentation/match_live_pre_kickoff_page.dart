@@ -351,11 +351,7 @@ class _MatchLivePreKickoffPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Vérifiez que la composition est bonne'),
-        content: const Text(
-          'Une fois le match démarré, le chronomètre se lance pour tout le '
-          'monde et cette composition devient celle que voient les joueurs.',
-        ),
+        title: const Text('Démarrer le match ?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
