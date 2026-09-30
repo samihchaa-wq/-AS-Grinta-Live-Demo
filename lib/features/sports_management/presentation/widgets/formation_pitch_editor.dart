@@ -188,6 +188,9 @@ class FormationMarkerMetrics {
   double get nameHeight => nameFontSize * 1.35 + 2;
 }
 
+/// Contour des joueurs signalés sur le terrain depuis le plus longtemps.
+const longestOnFieldRingColor = Color(0xFFE53935);
+
 class FormationPitchEditor extends StatefulWidget {
   const FormationPitchEditor({
     super.key,
@@ -200,6 +203,7 @@ class FormationPitchEditor extends StatefulWidget {
     this.benchLabels = const {},
     this.benchColors = const {},
     this.solidBenchBadges = const {},
+    this.alertedParticipants = const {},
     this.markerMetrics,
   });
 
@@ -223,6 +227,10 @@ class FormationPitchEditor extends StatefulWidget {
 
   /// Joueurs dont la pastille est pleine (« 1.0 » en direct).
   final Set<String> solidBenchBadges;
+
+  /// Joueurs entourés en rouge, à titre informatif (sur le terrain depuis le
+  /// plus longtemps, en direct).
+  final Set<String> alertedParticipants;
 
   /// Taille imposée des marqueurs. Renseignée quand un autre bloc (le banc du
   /// Tableau Blanc) doit afficher exactement les mêmes vignettes ; sinon elle
@@ -598,6 +606,10 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                           lastName: entry.lastInitial,
                           isGoalkeeper: entry.isGoalkeeper,
                           size: avatarSize,
+                          ringColor: widget.alertedParticipants
+                                  .contains(entry.participantId)
+                              ? longestOnFieldRingColor
+                              : null,
                         ),
                         if (finishedBenchCount > 0)
                           Positioned(
