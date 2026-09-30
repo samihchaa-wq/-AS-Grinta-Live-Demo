@@ -371,7 +371,8 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                   ),
                   _MatchModeAction(
                     icon: Icons.flag_rounded,
-                    label: 'Fin du match',
+                    label: 'Fin',
+                    tooltip: 'Fin du match',
                     danger: true,
                     onPressed: () => _confirmEndMatch(context, controller),
                   ),
