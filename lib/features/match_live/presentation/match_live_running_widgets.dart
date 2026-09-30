@@ -699,10 +699,14 @@ class _LiveJournal extends StatelessWidget {
     required this.onEditAssist,
     required this.onDelete,
     this.plain = false,
+    this.title = 'Journal du match',
+    this.emptyText = 'Aucun événement pour le moment.',
   });
 
   /// Vue spectateur : ni encadrés de salve ni repères « passage.série ».
   final bool plain;
+  final String title;
+  final String emptyText;
 
   final List<MatchLiveEvent> events;
   final bool expanded;
@@ -742,7 +746,7 @@ class _LiveJournal extends StatelessWidget {
                   const SizedBox(width: 9),
                   Expanded(
                     child: Text(
-                      'Journal du match',
+                      title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w400,
                           ),
@@ -765,8 +769,8 @@ class _LiveJournal extends StatelessWidget {
             ),
           ),
           if (latest == null)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
                 AppSpacing.cardPadding,
                 0,
                 AppSpacing.cardPadding,
@@ -774,7 +778,7 @@ class _LiveJournal extends StatelessWidget {
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Aucun événement pour le moment.'),
+                child: Text(emptyText),
               ),
             )
           else if (!expanded) ...[
@@ -1224,11 +1228,17 @@ class _MatchLiveSpectatorViewState
             ),
           ),
         const SizedBox(height: AppSpacing.sectionGap),
+        // Spectateur : seulement les buts.
         _LiveJournal(
-          events: bundle.events,
+          events: [
+            for (final event in bundle.events)
+              if (event.type != MatchLiveEventType.substitution) event,
+          ],
           expanded: _journalExpanded,
           canEdit: false,
           plain: true,
+          title: 'Faits de match',
+          emptyText: 'Aucun but pour le moment.',
           onExpandedChanged: (value) =>
               setState(() => _journalExpanded = value),
           onEditScorer: (_) {},
