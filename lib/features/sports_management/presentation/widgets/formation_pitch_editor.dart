@@ -685,8 +685,8 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
     );
   }
 
-  /// Marqueur du mode prénoms seuls : le prénom au centre de la place du
-  /// joueur (même encombrement qu'avec la pastille, pour ne rien décaler), et
+  /// Marqueur du mode prénoms seuls : le prénom à la place qu'il occupait
+  /// sous la pastille (même encombrement, pour ne rien décaler), et
   /// le repère « passage.série » juste dessous : au-dessus ou à côté, il
   /// serait coupé pour les joueurs placés en bord de terrain.
   Widget _nameOnlyMarker({
@@ -703,10 +703,14 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
       child: OverflowBox(
         minWidth: 0,
         maxWidth: FormationMarkerMetrics(width).nameMaxWidth,
-        alignment: Alignment.center,
+        maxHeight: double.infinity,
+        alignment: Alignment.topCenter,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Le prénom reste exactement où il était sous la pastille : la
+            // place du joueur sur le terrain ne bouge pas.
+            SizedBox(height: height - FormationMarkerMetrics(width).nameHeight),
             PitchPlayerName(
               label: entry.displayName.trim(),
               fontSize: fontSize * 1.15,
