@@ -233,6 +233,9 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                         field: lineup.entriesFor(MatchCompositionZone.field),
                         events: bundle.events,
                         substituteCounts: bundle.substituteCounts,
+                        benchCount: lineup
+                            .entriesFor(MatchCompositionZone.bench)
+                            .length,
                       ),
                       solidBenchBadges: {
                         for (final key in bundle.substituteCounts.keys)
