@@ -129,69 +129,90 @@ class _LiveHeaderBar extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (leading != null) leading!,
-                  SizedBox(
-                    width: 72,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: MatchLiveClock(session: session, compact: true),
+            if (!showClockAction)
+              // Mode match : la ligne ne porte plus que le chrono et le
+              // score, étalés sur toute la largeur et agrandis.
+              SizedBox(
+                height: 72,
+                child: Row(
+                  children: [
+                    if (leading != null) leading!,
+                    Expanded(
+                      flex: 4,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        alignment: Alignment.centerLeft,
+                        child: MatchLiveClock(session: session, compact: true),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  if (canEdit) ...[
-                    if (showClockAction)
-                      action(
-                        tooltip: firstAction.tooltip,
-                        icon: firstAction.icon,
-                        onPressed: firstAction.callback,
-                        filled: firstAction.filled,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 6,
+                      child: FittedBox(
+                        fit: BoxFit.contain,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            team(grintaIsHome),
+                            _scoreDash(context),
+                            team(!grintaIsHome),
+                          ],
+                        ),
                       ),
-                    if (!onlyClockAction) ...[
-                      action(
-                        tooltip: 'Mi-temps',
-                        icon: Icons.sports_rounded,
-                        onPressed: canGoHalftime ? onHalftime : null,
-                      ),
-                      action(
-                        tooltip: 'Recommencer',
-                        icon: Icons.restart_alt_rounded,
-                        onPressed: onRestart,
-                      ),
-                      action(
-                        tooltip: 'Fin du match',
-                        icon: Icons.flag_rounded,
-                        onPressed: onEndMatch,
-                        danger: true,
-                      ),
-                    ],
-                    const SizedBox(width: 8),
+                    ),
                   ],
-                  team(grintaIsHome),
-                  // Le tiret s'aligne sur les scores, sous la ligne des sigles.
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(' ',
-                            style: Theme.of(context).textTheme.labelSmall),
-                        Text(
-                          '–',
-                          style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              )
+            else
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (leading != null) leading!,
+                    SizedBox(
+                      width: 72,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: MatchLiveClock(session: session, compact: true),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    if (canEdit) ...[
+                      if (showClockAction)
+                        action(
+                          tooltip: firstAction.tooltip,
+                          icon: firstAction.icon,
+                          onPressed: firstAction.callback,
+                          filled: firstAction.filled,
+                        ),
+                      if (!onlyClockAction) ...[
+                        action(
+                          tooltip: 'Mi-temps',
+                          icon: Icons.sports_rounded,
+                          onPressed: canGoHalftime ? onHalftime : null,
+                        ),
+                        action(
+                          tooltip: 'Recommencer',
+                          icon: Icons.restart_alt_rounded,
+                          onPressed: onRestart,
+                        ),
+                        action(
+                          tooltip: 'Fin du match',
+                          icon: Icons.flag_rounded,
+                          onPressed: onEndMatch,
+                          danger: true,
                         ),
                       ],
-                    ),
-                  ),
-                  team(!grintaIsHome),
-                ],
+                      const SizedBox(width: 8),
+                    ],
+                    team(grintaIsHome),
+                    _scoreDash(context),
+                    team(!grintaIsHome),
+                  ],
+                ),
               ),
-            ),
             if (bottom != null) ...[
               const Divider(height: 12),
               bottom!,
@@ -346,6 +367,18 @@ class _BenchAction extends StatelessWidget {
     );
   }
 }
+
+/// Tiret du tableau d'affichage, aligné sur les scores (sous les sigles).
+Widget _scoreDash(BuildContext context) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(' ', style: Theme.of(context).textTheme.labelSmall),
+          Text('–', style: Theme.of(context).textTheme.headlineSmall),
+        ],
+      ),
+    );
 
 /// Trois premières lettres du nom, en capitales (« TOU » pour Toulouse).
 String _shortName(String name) {
