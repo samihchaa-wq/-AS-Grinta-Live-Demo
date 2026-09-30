@@ -700,7 +700,11 @@ class _LiveJournal extends StatelessWidget {
     required this.onEditScorer,
     required this.onEditAssist,
     required this.onDelete,
+    this.plain = false,
   });
+
+  /// Vue spectateur : ni encadrés de salve ni repères « passage.série ».
+  final bool plain;
 
   final List<MatchLiveEvent> events;
   final bool expanded;
@@ -714,8 +718,12 @@ class _LiveJournal extends StatelessWidget {
   Widget build(BuildContext context) {
     final ordered = events.reversed.toList();
     final latest = ordered.isEmpty ? null : ordered.first;
-    final salvos = substitutionSalvosByEvent(events);
-    final marks = substitutionExitMarksByEvent(events);
+    final salvos = plain
+        ? <MatchLiveEvent, SubstitutionSalvo>{}
+        : substitutionSalvosByEvent(events);
+    final marks = plain
+        ? <MatchLiveEvent, SubstitutionExitMark>{}
+        : substitutionExitMarksByEvent(events);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -1087,6 +1095,149 @@ class _Message extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Text(message, textAlign: TextAlign.center),
       ),
+    );
+  }
+}
+
+/// Vue spectateur du direct : pour tous ceux qui ne pilotent pas.
+///
+/// Chrono et score sur une ligne, composition en direct avec les ballons
+/// (buts) et chaussures (passes décisives) comme sur la fiche d'après-match,
+/// puis le journal, sans les repères réservés au pilote.
+class MatchLiveSpectatorView extends ConsumerStatefulWidget {
+  const MatchLiveSpectatorView({
+    super.key,
+    required this.bundle,
+    this.header,
+  });
+
+  final MatchLiveStateBundle bundle;
+
+  /// Bandeau au-dessus du direct (pour un coach : piloter / prendre la main).
+  final Widget? header;
+
+  @override
+  ConsumerState<MatchLiveSpectatorView> createState() =>
+      _MatchLiveSpectatorViewState();
+}
+
+class _MatchLiveSpectatorViewState
+    extends ConsumerState<MatchLiveSpectatorView> {
+  bool _journalExpanded = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final bundle = widget.bundle;
+    final session = bundle.session;
+    final fixture =
+        ref.watch(upcomingMatchFixtureProvider(session.matchId)).valueOrNull;
+    final opponentName = fixture?.opponentName ?? 'Adversaire';
+    final grintaIsHome = fixture?.grintaIsHome ?? true;
+    final lineup = bundle.lineup;
+
+    _LiveScore team(bool grinta) => _LiveScore(
+          shortName: grinta ? 'ASG' : _shortName(opponentName),
+          fullName: grinta ? 'AS Grinta' : opponentName,
+          score: grinta ? session.scoreAsGrinta : session.scoreAdverse,
+          canEdit: false,
+          onIncrement: () {},
+          onDecrement: () {},
+        );
+
+    // Buts et passes décisives de chaque joueur, pour les ballons et les
+    // chaussures sur la composition.
+    final goals = <String, int>{};
+    final assists = <String, int>{};
+    for (final event in bundle.events) {
+      if (event.type != MatchLiveEventType.goalUs) continue;
+      final scorer = event.scorerParticipantId;
+      final assist = event.assistParticipantId;
+      if (scorer != null) goals[scorer] = (goals[scorer] ?? 0) + 1;
+      if (assist != null) assists[assist] = (assists[assist] ?? 0) + 1;
+    }
+    List<MatchCompositionEntry> withStats(MatchCompositionZone zone) => [
+          for (final entry in lineup?.entriesFor(zone) ?? const [])
+            entry.copyWith(
+              goals: goals[entry.participantId] ?? 0,
+              assists: assists[entry.participantId] ?? 0,
+            ),
+        ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.liveScreenGutter,
+        AppSpacing.sectionGap,
+        AppSpacing.liveScreenGutter,
+        32,
+      ),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        if (widget.header != null) ...[
+          widget.header!,
+          const SizedBox(height: 10),
+        ],
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      alignment: Alignment.centerLeft,
+                      child: MatchLiveClock(session: session, compact: true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          team(grintaIsHome),
+                          const SizedBox(width: 8),
+                          _scoreDash(context),
+                          const SizedBox(width: 8),
+                          team(!grintaIsHome),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sectionGap),
+        // Composition dessinée à taille fixe : sans ce plafond, le grossissement
+        // de texte de l'application faisait déborder les prénoms d'un pixel.
+        if (lineup != null)
+          MediaQuery.withClampedTextScaling(
+            maxScaleFactor: 1,
+            child: CompositionPitchWithBench(
+              field: withStats(MatchCompositionZone.field),
+              bench: withStats(MatchCompositionZone.bench),
+            ),
+          ),
+        const SizedBox(height: AppSpacing.sectionGap),
+        _LiveJournal(
+          events: bundle.events,
+          expanded: _journalExpanded,
+          canEdit: false,
+          plain: true,
+          onExpandedChanged: (value) =>
+              setState(() => _journalExpanded = value),
+          onEditScorer: (_) {},
+          onEditAssist: (_) {},
+          onDelete: (_) {},
+        ),
+      ],
     );
   }
 }

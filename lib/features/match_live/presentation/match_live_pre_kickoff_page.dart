@@ -2,6 +2,7 @@ import 'package:as_grinta/core/logging/app_logger.dart';
 import 'package:as_grinta/core/utils/app_errors.dart';
 import 'package:as_grinta/core/widgets/grinta_loader.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_state_bundle.dart';
+import 'package:as_grinta/features/match_live/presentation/match_live_pilot.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_providers.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_add_player_sheet.dart';
 import 'package:as_grinta/features/match_live/presentation/widgets/match_live_remove_player_sheet.dart';
@@ -368,6 +369,8 @@ class _MatchLivePreKickoffPageState
 
     setState(() => _busy = true);
     try {
+      // Celui qui donne le coup d'envoi pilote le Live.
+      ref.read(livePilotProvider(widget.matchId).notifier).state = LivePilot.me;
       await _controller.openWorkspace(plannedDurationMinutes: minutes);
       await _controller.confirmStart();
     } finally {

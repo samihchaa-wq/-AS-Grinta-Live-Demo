@@ -36,7 +36,11 @@ void main() {
         ),
         // Le coach de la saison pilote le Live sans être administrateur.
         isAdminViewProvider.overrideWith((ref) => false),
-        isMatchCoachOrAdminProvider.overrideWith((ref, matchId) async => true),
+        // Coach par défaut ; le menu de simulation de la démo permet de voir
+        // l'écran comme un joueur.
+        isMatchCoachOrAdminProvider.overrideWith(
+          (ref, matchId) async => ref.watch(demoViewAsCoachProvider),
+        ),
         upcomingMatchFixtureProvider.overrideWith(
           (ref, matchId) async => UpcomingMatchFixtureData(
             status: 'a_venir',

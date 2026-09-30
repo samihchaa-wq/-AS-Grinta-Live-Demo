@@ -5,6 +5,7 @@ import 'package:as_grinta/core/theme/app_theme.dart';
 import 'package:as_grinta/core/widgets/grinta_app_bar.dart';
 import 'package:as_grinta/demo/demo_backend.dart';
 import 'package:as_grinta/demo/demo_fixture.dart';
+import 'package:as_grinta/features/match_live/presentation/match_live_pilot.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_providers.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_tab.dart';
 import 'package:as_grinta/features/matches/presentation/widgets/upcoming_match_fixture_header.dart';
@@ -12,6 +13,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final demoBackendProvider = Provider<DemoBackend>((ref) => DemoBackend());
+
+/// Démo : voir l'écran comme un coach (pilote possible) ou comme un joueur
+/// (spectateur uniquement).
+final demoViewAsCoachProvider = StateProvider<bool>((ref) => true);
 
 /// Incrémenté à chaque « Recommencer » : l'onglet Live est reconstruit à neuf,
 /// sans garder l'état local de l'écran précédent.
@@ -57,6 +62,9 @@ class DemoMatchPage extends ConsumerWidget {
     if (!confirmed) return;
     ref.read(demoBackendProvider).reset();
     ref.invalidate(matchLiveStateProvider(matchId));
+    ref
+      ..invalidate(livePilotProvider(matchId))
+      ..invalidate(liveSpectatorChoiceProvider(matchId));
     ref.read(_demoRunProvider.notifier).state++;
   }
 
@@ -108,7 +116,10 @@ class DemoMatchPage extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _DemoBanner(onReset: () => _confirmReset(context, ref)),
+            _DemoBanner(
+              onReset: () => _confirmReset(context, ref),
+              simulation: const _DemoSimulationMenu(),
+            ),
             Expanded(child: page),
           ],
         ),
@@ -143,9 +154,10 @@ class DemoMatchPage extends ConsumerWidget {
 /// Seul ajout visible par rapport à l'application : un rappel qu'on est dans
 /// la démo, et le bouton pour tout remettre à zéro.
 class _DemoBanner extends StatelessWidget {
-  const _DemoBanner({required this.onReset});
+  const _DemoBanner({required this.onReset, required this.simulation});
 
   final VoidCallback onReset;
+  final Widget simulation;
 
   @override
   Widget build(BuildContext context) {
@@ -168,6 +180,7 @@ class _DemoBanner extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            simulation,
             TextButton(
               style: TextButton.styleFrom(
                 foregroundColor: Colors.black87,
@@ -179,6 +192,45 @@ class _DemoBanner extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Démo : simuler un autre coach ou la vue d'un joueur, impossibles à
+/// reproduire autrement sur un seul téléphone.
+class _DemoSimulationMenu extends ConsumerWidget {
+  const _DemoSimulationMenu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const matchId = DemoMatchPage.matchId;
+    final otherPilots =
+        ref.watch(livePilotProvider(matchId)) == LivePilot.other;
+    final asCoach = ref.watch(demoViewAsCoachProvider);
+    return PopupMenuButton<String>(
+      tooltip: 'Simulation',
+      icon: const Icon(Icons.groups_rounded, color: Colors.black87),
+      onSelected: (value) {
+        switch (value) {
+          case 'other':
+            ref.read(livePilotProvider(matchId).notifier).state =
+                otherPilots ? LivePilot.nobody : LivePilot.other;
+          case 'player':
+            ref.read(demoViewAsCoachProvider.notifier).state = !asCoach;
+        }
+      },
+      itemBuilder: (_) => [
+        CheckedPopupMenuItem(
+          value: 'other',
+          checked: otherPilots,
+          child: const Text('Un autre coach pilote'),
+        ),
+        CheckedPopupMenuItem(
+          value: 'player',
+          checked: !asCoach,
+          child: const Text('Voir comme un joueur'),
+        ),
+      ],
     );
   }
 }

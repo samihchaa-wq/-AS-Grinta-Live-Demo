@@ -1,6 +1,7 @@
 import 'package:as_grinta/core/utils/app_errors.dart';
 import 'package:as_grinta/core/widgets/grinta_loader.dart';
 import 'package:as_grinta/features/match_live/domain/match_live_session.dart';
+import 'package:as_grinta/features/match_live/presentation/match_live_pilot.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_pre_kickoff_page.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_providers.dart';
 import 'package:as_grinta/features/match_live/presentation/match_live_running_page.dart';
@@ -80,13 +81,28 @@ class MatchLiveTab extends ConsumerWidget {
                 : page;
           }
 
-          // Match en cours, côté coach : il se pilote en mode match plein
-          // écran, ouvert automatiquement ; la fiche garde un raccourci.
-          if (canEdit && bundle.session.state != MatchLiveState.finished) {
-            return _LiveRealtimeBoundary(
-              matchId: matchId,
-              child: _MatchModeLauncher(matchId: matchId),
-            );
+          // Match en cours : une seule personne pilote (en mode match plein
+          // écran), tous les autres suivent en spectateur.
+          if (bundle.session.state != MatchLiveState.finished) {
+            final pilot = ref.watch(livePilotProvider(matchId));
+            final choseSpectator =
+                ref.watch(liveSpectatorChoiceProvider(matchId));
+            final Widget child;
+            if (canEdit && pilot == LivePilot.me) {
+              child = _MatchModeLauncher(matchId: matchId);
+            } else if (canEdit &&
+                pilot == LivePilot.nobody &&
+                !choseSpectator) {
+              child = _PilotChoice(matchId: matchId);
+            } else {
+              child = MatchLiveSpectatorView(
+                bundle: bundle,
+                header: canEdit
+                    ? _PilotBanner(matchId: matchId, pilot: pilot)
+                    : null,
+              );
+            }
+            return _LiveRealtimeBoundary(matchId: matchId, child: child);
           }
 
           final page = MatchLiveRunningPage(
@@ -116,6 +132,102 @@ class MatchLiveTab extends ConsumerWidget {
           );
         }
       },
+    );
+  }
+}
+
+/// Personne ne pilote : le coach choisit de piloter ou de suivre le match.
+class _PilotChoice extends ConsumerWidget {
+  const _PilotChoice({required this.matchId});
+
+  final String matchId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(64),
+            ),
+            onPressed: () => ref
+                .read(livePilotProvider(matchId).notifier)
+                .state = LivePilot.me,
+            icon: const Icon(Icons.sports_rounded),
+            label: const Text('Piloter le mode live'),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(64),
+            ),
+            onPressed: () => ref
+                .read(liveSpectatorChoiceProvider(matchId).notifier)
+                .state = true,
+            icon: const Icon(Icons.visibility_rounded),
+            label: const Text('Être spectateur'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bandeau du coach spectateur : piloter si la place est libre, sinon
+/// prendre la main sur le pilote actuel.
+class _PilotBanner extends ConsumerWidget {
+  const _PilotBanner({required this.matchId, required this.pilot});
+
+  final String matchId;
+  final LivePilot pilot;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final free = pilot == LivePilot.nobody;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                free ? 'Personne ne pilote' : 'Un autre coach pilote',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!free) {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Prendre la main ?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Annuler'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Prendre la main'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed != true) return;
+                }
+                ref.read(livePilotProvider(matchId).notifier).state =
+                    LivePilot.me;
+              },
+              child: Text(free ? 'Piloter' : 'Prendre la main'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -205,23 +317,45 @@ class _MatchLiveMatchModeState extends ConsumerState<MatchLiveMatchMode> {
         bundle.session.sessionExists &&
         _live.contains(bundle.session.state);
 
-    if (!live && bundle != null && !_closing) {
+    final pilot = ref.watch(livePilotProvider(widget.matchId));
+    final lostControl = pilot == LivePilot.other;
+    if (((!live && bundle != null) || lostControl) && !_closing) {
       _closing = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.of(context).maybePop();
+        if (!mounted) return;
+        if (lostControl) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            const SnackBar(content: Text('Un autre coach a pris la main.')),
+          );
+        }
+        Navigator.of(context).maybePop();
       });
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: bundle == null || !live
-            ? const SizedBox.shrink()
-            : MatchLiveRunningPage(
-                matchId: widget.matchId,
-                bundle: bundle,
-                canEdit: canEdit,
-                fullScreen: true,
-              ),
+    // Quitter le mode match libère la place de pilote : l'écran de choix
+    // réapparaît pour les coachs.
+    return PopScope(
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) return;
+        final pilotNotifier =
+            ref.read(livePilotProvider(widget.matchId).notifier);
+        if (pilotNotifier.state == LivePilot.me) {
+          pilotNotifier.state = LivePilot.nobody;
+        }
+        ref.read(liveSpectatorChoiceProvider(widget.matchId).notifier).state =
+            false;
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: bundle == null || !live
+              ? const SizedBox.shrink()
+              : MatchLiveRunningPage(
+                  matchId: widget.matchId,
+                  bundle: bundle,
+                  canEdit: canEdit,
+                  fullScreen: true,
+                ),
+        ),
       ),
     );
   }
