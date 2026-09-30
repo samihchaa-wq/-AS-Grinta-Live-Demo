@@ -41,42 +41,37 @@ class LiveBenchTile extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Comme sur le terrain en direct : seulement le prénom, à la place
-          // qu'occupait la pastille, avec le repère « passage.série » dessous.
+          // Comme sur le terrain en direct : seulement le prénom, avec le
+          // repère « passage.série » collé dessous, le tout centré dans la
+          // place qu'occupait la pastille.
           SizedBox(
-            height: metrics.avatarSize,
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  entry.displayName,
-                  maxLines: 1,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: metrics.nameFontSize * 1.15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-          SizedBox(
-            height: metrics.nameHeight,
-            child: timesBenched <= 0
-                ? null
-                : Center(
-                    child: SubstituteHistoryBadge(
-                      count: timesBenched,
-                      label: liveBenchLabel(lastExit, timesBenched),
-                      color: switch (lastExit) {
-                        final exit? =>
-                          substitutionSalvoColorAt(exit.colorIndex),
-                        null => substitutionStartColor,
-                      },
-                      solid: lastExit == null,
+            height: metrics.avatarSize + 2 + metrics.nameHeight,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    entry.displayName,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: metrics.nameFontSize * 1.15,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
+                ),
+                if (timesBenched > 0)
+                  SubstituteHistoryBadge(
+                    count: timesBenched,
+                    label: liveBenchLabel(lastExit, timesBenched),
+                    color: switch (lastExit) {
+                      final exit? => substitutionSalvoColorAt(exit.colorIndex),
+                      null => substitutionStartColor,
+                    },
+                  ),
+              ],
+            ),
           ),
         ],
       ),

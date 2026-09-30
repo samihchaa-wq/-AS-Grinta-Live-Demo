@@ -241,10 +241,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                         for (final id in nextOut.toChoose)
                           id: nextOutToChooseColor,
                       },
-                      solidBenchBadges: {
-                        for (final key in bundle.substituteCounts.keys)
-                          if (lastExits[key] == null) key,
-                      },
                       markerMetrics: metrics,
                       onDroppedOnSlot: (moving, slot) => _handlePitchDrop(
                         context,

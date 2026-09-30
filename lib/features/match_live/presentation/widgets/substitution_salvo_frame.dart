@@ -20,7 +20,7 @@ const substitutionSalvoPalette = <Color>[
 ];
 
 /// Couleur du « 1.0 » : joueur passé par le banc sans en être jamais sorti.
-/// Le jaune du club, en pastille pleine : il n'appartient à aucune salve.
+/// Contour jaune du club : il n'appartient à aucune salve.
 const substitutionStartColor = AppTheme.accent;
 
 Color substitutionSalvoColor(SubstitutionSalvo salvo) =>

@@ -652,7 +652,6 @@ class SubstituteHistoryBadge extends StatelessWidget {
     required this.count,
     this.label,
     this.color,
-    this.solid = false,
   });
 
   final int count;
@@ -660,36 +659,29 @@ class SubstituteHistoryBadge extends StatelessWidget {
   /// Texte affiché à la place du compteur, par exemple « 2.1 » en direct.
   final String? label;
 
-  /// Couleur de la salve de la dernière sortie, en direct. Sans elle, la
-  /// pastille reste neutre.
+  /// Couleur du contour, en direct (couleur de la salve de la dernière
+  /// sortie). Le repère est alors blanc sur fond noir, pour rester lisible
+  /// quelle que soit la couleur. Sans elle, la pastille reste neutre.
   final Color? color;
-
-  /// Pastille pleine de la couleur [color], texte foncé (« 1.0 » en direct).
-  final bool solid;
 
   @override
   Widget build(BuildContext context) {
     if (count <= 0) return const SizedBox.shrink();
     const base = Color(0xFF2E3A59);
     final accent = color;
-    final filled = solid && accent != null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
       decoration: BoxDecoration(
-        color: accent == null
-            ? base
-            : filled
-                ? accent
-                : Color.alphaBlend(accent.withValues(alpha: .22), base),
+        color: accent == null ? base : Colors.black,
         borderRadius: BorderRadius.circular(6),
         border: accent == null
             ? Border.all(color: Colors.white70, width: .8)
-            : Border.all(color: accent, width: 1.2),
+            : Border.all(color: accent, width: 1.8),
       ),
       child: Text(
         label ?? '$count',
-        style: TextStyle(
-          color: filled ? const Color(0xFF041224) : Colors.white,
+        style: const TextStyle(
+          color: Colors.white,
           fontSize: 9,
           fontWeight: FontWeight.w400,
           height: 1,
