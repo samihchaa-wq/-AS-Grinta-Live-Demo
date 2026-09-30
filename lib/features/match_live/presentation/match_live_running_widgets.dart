@@ -523,14 +523,6 @@ class _BenchColumn extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                'Banc (${bench.length})',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.contentGap),
               if (bench.isEmpty)
                 Text(
                   'Personne',
