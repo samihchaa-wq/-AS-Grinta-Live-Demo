@@ -1,3 +1,4 @@
+import 'package:as_grinta/core/theme/app_theme.dart';
 import 'package:as_grinta/features/match_live/domain/substitution_salvos.dart';
 import 'package:flutter/material.dart';
 
@@ -19,8 +20,8 @@ const substitutionSalvoPalette = <Color>[
 ];
 
 /// Couleur du « 1.0 » : joueur passé par le banc sans en être jamais sorti.
-/// Elle n'appartient à aucune salve.
-const substitutionStartColor = Colors.white;
+/// Le jaune du club, en pastille pleine : il n'appartient à aucune salve.
+const substitutionStartColor = AppTheme.accent;
 
 Color substitutionSalvoColor(SubstitutionSalvo salvo) =>
     substitutionSalvoColorAt(salvo.colorIndex);
