@@ -1,4 +1,3 @@
-import 'package:as_grinta/core/theme/app_theme.dart';
 import 'package:as_grinta/core/widgets/drag_auto_scroll.dart';
 import 'package:as_grinta/features/sports_management/domain/football_formation.dart';
 import 'package:as_grinta/features/sports_management/domain/match_composition.dart';
@@ -68,6 +67,10 @@ class FormationPitchTapSelection {
 }
 
 /// Surbrillance persistante d'un joueur du banc sélectionné au clic.
+/// Joueur sélectionné (appui ou glisser) : un jaune doré plus foncé que le
+/// jaune du club, pour que le prénom blanc reste lisible.
+const formationSelectionColor = Color(0xFFB39500);
+
 class FormationPitchTapSelectionHighlight extends StatelessWidget {
   const FormationPitchTapSelectionHighlight({
     super.key,
@@ -89,19 +92,18 @@ class FormationPitchTapSelectionHighlight extends StatelessWidget {
           duration: const Duration(milliseconds: 140),
           decoration: BoxDecoration(
             color: selected
-                ? AppTheme.accent.withValues(alpha: .10)
+                ? formationSelectionColor.withValues(alpha: .22)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: selected ? AppTheme.accent : Colors.transparent,
+              color: selected ? formationSelectionColor : Colors.transparent,
               width: selected ? 2.5 : 0,
             ),
             boxShadow: selected
                 ? [
                     BoxShadow(
-                      color: AppTheme.accent.withValues(alpha: .8),
-                      blurRadius: 8,
-                      spreadRadius: 1,
+                      color: formationSelectionColor.withValues(alpha: .35),
+                      blurRadius: 6,
                     ),
                   ]
                 : null,
@@ -520,17 +522,20 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                     height: avatarSize,
                     decoration: BoxDecoration(
                       color: highlighted
-                          ? AppTheme.accent.withValues(alpha: .32)
+                          ? formationSelectionColor.withValues(alpha: .32)
                           : Colors.white.withValues(alpha: .10),
                       borderRadius: BorderRadius.circular(17),
                       border: Border.all(
-                        color: highlighted ? AppTheme.accent : Colors.white54,
+                        color: highlighted
+                            ? formationSelectionColor
+                            : Colors.white54,
                         width: highlighted ? 2.5 : 1,
                       ),
                       boxShadow: selected
                           ? [
                               BoxShadow(
-                                color: AppTheme.accent.withValues(alpha: .8),
+                                color: formationSelectionColor.withValues(
+                                    alpha: .8),
                                 blurRadius: 9,
                                 spreadRadius: 1,
                               ),
@@ -574,19 +579,21 @@ class _FormationPitchEditorState extends State<FormationPitchEditor> {
                 duration: const Duration(milliseconds: 140),
                 decoration: BoxDecoration(
                   color: selected
-                      ? AppTheme.accent.withValues(alpha: .12)
+                      ? formationSelectionColor.withValues(alpha: .22)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: highlighted ? AppTheme.accent : Colors.transparent,
+                    color: highlighted
+                        ? formationSelectionColor
+                        : Colors.transparent,
                     width: highlighted ? 2.5 : 0,
                   ),
                   boxShadow: highlighted
                       ? [
                           BoxShadow(
-                            color: AppTheme.accent.withValues(alpha: .9),
-                            blurRadius: 8,
-                            spreadRadius: 2,
+                            color:
+                                formationSelectionColor.withValues(alpha: .35),
+                            blurRadius: 6,
                           ),
                         ]
                       : null,
