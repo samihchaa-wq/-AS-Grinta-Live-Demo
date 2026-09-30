@@ -22,8 +22,9 @@ final livePilotProvider = StateProvider.family<LivePilot, String>(
   (ref, matchId) => LivePilot.nobody,
 );
 
-/// Le coach a choisi de suivre le match en spectateur alors que personne ne
-/// pilote : l'écran de choix ne lui est plus proposé.
-final liveSpectatorChoiceProvider = StateProvider.family<bool, String>(
-  (ref, matchId) => false,
+/// Onglet choisi par un coach sous « Live » : suivre le match ou le piloter.
+enum LiveViewMode { spectator, pilot }
+
+final liveViewModeProvider = StateProvider.family<LiveViewMode, String>(
+  (ref, matchId) => LiveViewMode.spectator,
 );

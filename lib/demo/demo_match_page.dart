@@ -64,7 +64,7 @@ class DemoMatchPage extends ConsumerWidget {
     ref.invalidate(matchLiveStateProvider(matchId));
     ref
       ..invalidate(livePilotProvider(matchId))
-      ..invalidate(liveSpectatorChoiceProvider(matchId));
+      ..invalidate(liveViewModeProvider(matchId));
     ref.read(_demoRunProvider.notifier).state++;
   }
 

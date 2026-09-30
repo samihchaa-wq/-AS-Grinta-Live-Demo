@@ -47,9 +47,8 @@ class MatchLiveRunningPage extends ConsumerStatefulWidget {
   final MatchLiveStateBundle bundle;
   final bool canEdit;
 
-  /// Mode match : l'écran occupe tout le téléphone, avec une seule ligne de
-  /// commandes en haut, le terrain au centre et les changements en attente
-  /// en bas. Les actions occasionnelles passent dans le menu « ⋯ ».
+  /// Vue pilote : bandeau chrono / score et commandes en deux lignes, terrain
+  /// et banc, puis buts à attribuer et changements en attente.
   final bool fullScreen;
 
   @override
@@ -355,8 +354,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     );
   }
 
-  /// Mode match plein écran : une ligne de commandes fixe en haut, le
-  /// terrain au centre, les changements en attente dans une barre en bas.
+  /// Vue pilote, posée dans la fiche du match.
   Widget _buildFullScreen(
     BuildContext context, {
     required MatchComposition lineup,
@@ -374,19 +372,10 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
     ];
 
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // Retour à la fiche : au-dessus de l'encadré, pour laisser toute la
-        // largeur de la ligne au chrono et au score.
-        Align(
-          alignment: Alignment.centerLeft,
-          child: IconButton(
-            tooltip: 'Quitter le mode match',
-            onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
-        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: _LiveHeaderBar(
             bundle: bundle,
             canEdit: canEdit,
@@ -482,20 +471,18 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
             ),
           ),
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(8, 10, 8, 16),
-            child: pitchArea,
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 0),
+          child: pitchArea,
         ),
+        // Sous le terrain : buts à attribuer et changements en attente.
         if (canEdit && (_pending.isNotEmpty || goalsToAttribute.isNotEmpty))
           Material(
-            elevation: 8,
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            color: Colors.transparent,
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

@@ -418,7 +418,7 @@ class _LiveScore extends StatelessWidget {
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
-    final buttonSize = wide ? 40.0 : 30.0;
+    final buttonSize = wide ? 36.0 : 30.0;
     final iconSize = wide ? 28.0 : 22.0;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -444,9 +444,15 @@ class _LiveScore extends StatelessWidget {
                 iconSize: iconSize,
                 icon: const Icon(Icons.remove_circle_outline_rounded),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: number,
+            // Le score rétrécit plutôt que de déborder si la place manque.
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: number,
+                ),
+              ),
             ),
             if (canEdit)
               IconButton(

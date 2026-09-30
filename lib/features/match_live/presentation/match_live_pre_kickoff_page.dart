@@ -371,6 +371,8 @@ class _MatchLivePreKickoffPageState
     try {
       // Celui qui donne le coup d'envoi pilote le Live.
       ref.read(livePilotProvider(widget.matchId).notifier).state = LivePilot.me;
+      ref.read(liveViewModeProvider(widget.matchId).notifier).state =
+          LiveViewMode.pilot;
       await _controller.openWorkspace(plannedDurationMinutes: minutes);
       await _controller.confirmStart();
     } finally {
