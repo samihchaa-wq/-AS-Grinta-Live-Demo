@@ -383,7 +383,7 @@ class _MatchLivePreKickoffPageState
 }
 
 /// Avant le coup d'envoi, pour ceux qui ne pilotent pas : la composition
-/// prévue, en lecture seule, avec le temps de jeu et le dispositif.
+/// prévue, en lecture seule.
 class MatchLivePreKickoffSpectatorView extends StatelessWidget {
   const MatchLivePreKickoffSpectatorView({super.key, required this.bundle});
 
@@ -413,20 +413,10 @@ class MatchLivePreKickoffSpectatorView extends StatelessWidget {
           margin: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Le match n’a pas encore démarré',
-                    style: theme.textTheme.titleSmall,
-                  ),
-                ),
-                Text(
-                  '${bundle.session.planPlannedDurationMinutes} min · '
-                  '${formationForCode(lineup.formationCode).code}',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
+            child: Text(
+              'Le match n’a pas encore démarré',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleSmall,
             ),
           ),
         ),
