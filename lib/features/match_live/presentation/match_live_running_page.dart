@@ -322,6 +322,55 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
             onHalftime: () => _confirmHalftime(context, controller),
             onRestart: () => _confirmRestart(context, controller),
             onEndMatch: () => _confirmEndMatch(context, controller),
+            bottom: canEdit
+                ? Row(
+                    children: [
+                      _MatchModeAction(
+                        icon: Icons.sports_rounded,
+                        label: 'Mi-temps',
+                        onPressed: canGoHalftime
+                            ? () => _confirmHalftime(context, controller)
+                            : null,
+                      ),
+                      _MatchModeAction(
+                        icon: Icons.grid_view_rounded,
+                        label: formationForCode(lineup.formationCode).code,
+                        tooltip: 'Changer de dispositif',
+                        onPressed: setupControlsDisabled
+                            ? null
+                            : () => _onMatchMenu(
+                                  context,
+                                  'formation',
+                                  lineup,
+                                  controller,
+                                ),
+                      ),
+                      _MatchModeAction(
+                        icon: Icons.person_add_alt_1_rounded,
+                        label: 'Ajouter',
+                        tooltip: 'Ajouter un joueur',
+                        onPressed: setupControlsDisabled
+                            ? null
+                            : () => showMatchLiveAddPlayerSheet(
+                                  context,
+                                  ref,
+                                  matchId: matchId,
+                                ),
+                      ),
+                      _MatchModeAction(
+                        icon: Icons.restart_alt_rounded,
+                        label: 'Recommencer',
+                        onPressed: () => _confirmRestart(context, controller),
+                      ),
+                      _MatchModeAction(
+                        icon: Icons.flag_rounded,
+                        label: 'Fin du match',
+                        danger: true,
+                        onPressed: () => _confirmEndMatch(context, controller),
+                      ),
+                    ],
+                  )
+                : null,
             leading: IconButton(
               tooltip: 'Quitter le mode match',
               onPressed: () => Navigator.of(context).maybePop(),
@@ -338,64 +387,6 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
                   child: const Icon(Icons.receipt_long_rounded),
                 ),
               ),
-              if (canEdit)
-                PopupMenuButton<String>(
-                  tooltip: 'Autres actions',
-                  icon: const Icon(Icons.more_vert_rounded),
-                  onSelected: (value) =>
-                      _onMatchMenu(context, value, lineup, controller),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'halftime',
-                      enabled: canGoHalftime,
-                      child: const ListTile(
-                        leading: Icon(Icons.sports_rounded),
-                        title: Text('Mi-temps'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'formation',
-                      enabled: !setupControlsDisabled,
-                      child: ListTile(
-                        leading: const Icon(Icons.grid_view_rounded),
-                        title: Text(
-                          'Dispositif (${formationForCode(lineup.formationCode).code})',
-                        ),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'add',
-                      enabled: !setupControlsDisabled,
-                      child: const ListTile(
-                        leading: Icon(Icons.person_add_alt_1_rounded),
-                        title: Text('Ajouter un joueur'),
-                      ),
-                    ),
-                    const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: 'restart',
-                      child: ListTile(
-                        leading: Icon(Icons.restart_alt_rounded),
-                        title: Text('Recommencer'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'end',
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.flag_rounded,
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        title: Text(
-                          'Fin du match',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),

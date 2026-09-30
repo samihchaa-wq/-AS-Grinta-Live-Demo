@@ -15,6 +15,7 @@ class _LiveHeaderBar extends ConsumerWidget {
     this.onlyClockAction = false,
     this.leading,
     this.trailing = const [],
+    this.bottom,
   });
 
   final MatchLiveStateBundle bundle;
@@ -31,6 +32,9 @@ class _LiveHeaderBar extends ConsumerWidget {
   final bool onlyClockAction;
   final Widget? leading;
   final List<Widget> trailing;
+
+  /// Seconde ligne du bandeau (commandes occasionnelles du mode match).
+  final Widget? bottom;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -120,69 +124,134 @@ class _LiveHeaderBar extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         // Sur un écran étroit, la ligne se réduit d'un bloc plutôt que de
         // passer sur deux lignes.
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (leading != null) leading!,
-              SizedBox(
-                width: 72,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: MatchLiveClock(session: session, compact: true),
-                ),
-              ),
-              const SizedBox(width: 4),
-              if (canEdit) ...[
-                action(
-                  tooltip: firstAction.tooltip,
-                  icon: firstAction.icon,
-                  onPressed: firstAction.callback,
-                  filled: firstAction.filled,
-                ),
-                if (!onlyClockAction) ...[
-                  action(
-                    tooltip: 'Mi-temps',
-                    icon: Icons.sports_rounded,
-                    onPressed: canGoHalftime ? onHalftime : null,
-                  ),
-                  action(
-                    tooltip: 'Recommencer',
-                    icon: Icons.restart_alt_rounded,
-                    onPressed: onRestart,
-                  ),
-                  action(
-                    tooltip: 'Fin du match',
-                    icon: Icons.flag_rounded,
-                    onPressed: onEndMatch,
-                    danger: true,
-                  ),
-                ],
-                const SizedBox(width: 8),
-              ],
-              team(grintaIsHome),
-              // Le tiret s'aligne sur les scores, sous la ligne des sigles.
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(' ', style: Theme.of(context).textTheme.labelSmall),
-                    Text(
-                      '–',
-                      style: Theme.of(context).textTheme.headlineSmall,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (leading != null) leading!,
+                  SizedBox(
+                    width: 72,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: MatchLiveClock(session: session, compact: true),
                     ),
+                  ),
+                  const SizedBox(width: 4),
+                  if (canEdit) ...[
+                    action(
+                      tooltip: firstAction.tooltip,
+                      icon: firstAction.icon,
+                      onPressed: firstAction.callback,
+                      filled: firstAction.filled,
+                    ),
+                    if (!onlyClockAction) ...[
+                      action(
+                        tooltip: 'Mi-temps',
+                        icon: Icons.sports_rounded,
+                        onPressed: canGoHalftime ? onHalftime : null,
+                      ),
+                      action(
+                        tooltip: 'Recommencer',
+                        icon: Icons.restart_alt_rounded,
+                        onPressed: onRestart,
+                      ),
+                      action(
+                        tooltip: 'Fin du match',
+                        icon: Icons.flag_rounded,
+                        onPressed: onEndMatch,
+                        danger: true,
+                      ),
+                    ],
+                    const SizedBox(width: 8),
                   ],
-                ),
+                  team(grintaIsHome),
+                  // Le tiret s'aligne sur les scores, sous la ligne des sigles.
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(' ',
+                            style: Theme.of(context).textTheme.labelSmall),
+                        Text(
+                          '–',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  team(!grintaIsHome),
+                  if (trailing.isNotEmpty) ...[
+                    const SizedBox(width: 4),
+                    ...trailing,
+                  ],
+                ],
               ),
-              team(!grintaIsHome),
-              if (trailing.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                ...trailing,
-              ],
+            ),
+            if (bottom != null) ...[
+              const Divider(height: 12),
+              bottom!,
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Commande de la seconde ligne du mode match : icône et petit libellé.
+class _MatchModeAction extends StatelessWidget {
+  const _MatchModeAction({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.tooltip,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? tooltip;
+  final VoidCallback? onPressed;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final enabled = onPressed != null;
+    final color = !enabled
+        ? scheme.onSurface.withValues(alpha: .38)
+        : danger
+            ? scheme.error
+            : scheme.onSurface;
+    return Expanded(
+      child: Tooltip(
+        message: tooltip ?? label,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 22, color: color),
+                const SizedBox(height: 2),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(fontSize: 11, color: color),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
