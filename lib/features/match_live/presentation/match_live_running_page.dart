@@ -95,21 +95,7 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        _LiveTopBar(
-          session: bundle.session,
-          canEdit: canEdit,
-          onPause: () => controller.setClockState('pause'),
-          onResume: () => controller.setClockState('resume'),
-          onResumeSecondHalf: () =>
-              controller.setClockState('resume_second_half'),
-          onHalftime: () => _confirmHalftime(context, controller),
-          onRestart: () => _confirmRestart(context, controller),
-          onEndMatch: () => _confirmEndMatch(context, controller),
-        ),
-        const SizedBox(height: 10),
-        _ScoreCard(bundle: bundle, canEdit: canEdit),
         if (canEdit) ...[
-          const SizedBox(height: 10),
           Row(
             key: const ValueKey('live-running-controls'),
             children: [
@@ -167,7 +153,19 @@ class _MatchLiveRunningPageState extends ConsumerState<MatchLiveRunningPage> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
         ],
+        _LiveHeaderBar(
+          bundle: bundle,
+          canEdit: canEdit,
+          onPause: () => controller.setClockState('pause'),
+          onResume: () => controller.setClockState('resume'),
+          onResumeSecondHalf: () =>
+              controller.setClockState('resume_second_half'),
+          onHalftime: () => _confirmHalftime(context, controller),
+          onRestart: () => _confirmRestart(context, controller),
+          onEndMatch: () => _confirmEndMatch(context, controller),
+        ),
         const SizedBox(height: AppSpacing.sectionGap),
         LayoutBuilder(
           builder: (context, constraints) {
