@@ -61,9 +61,8 @@ class DemoMatchPage extends ConsumerWidget {
         false;
     if (!confirmed) return;
     ref.read(demoBackendProvider).reset();
-    ref.invalidate(matchLiveStateProvider(matchId));
     ref
-      ..invalidate(livePilotProvider(matchId))
+      ..invalidate(matchLiveStateProvider(matchId))
       ..invalidate(liveViewModeProvider(matchId));
     ref.read(_demoRunProvider.notifier).state++;
   }
@@ -210,8 +209,11 @@ class _DemoSimulationMenu extends ConsumerWidget {
       onSelected: (value) {
         switch (value) {
           case 'other':
-            ref.read(livePilotProvider(matchId).notifier).state =
-                otherPilots ? LivePilot.nobody : LivePilot.other;
+            // Passe par le même verrou que l'application : si ce téléphone
+            // pilotait, il perd la main comme face à un second téléphone.
+            ref
+                .read(demoBackendProvider)
+                .simulateOtherCoachPilot(active: !otherPilots);
           case 'player':
             ref.read(demoViewAsCoachProvider.notifier).state = !asCoach;
         }

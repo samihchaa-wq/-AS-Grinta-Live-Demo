@@ -13,9 +13,13 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 /// sans aucune adaptation. Rien n'est jamais envoyé sur le réseau et tout
 /// repart de zéro au rechargement de la page.
 class DemoBackend {
-  DemoBackend() {
+  /// [clock] sert uniquement aux tests, pour simuler l'expiration du pilote
+  /// sans attendre une minute.
+  DemoBackend({DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
     reset();
   }
+
+  final DateTime Function() _clock;
 
   final Map<String, _Participant> _participants = {};
   final List<_Event> _events = [];
@@ -76,7 +80,7 @@ class DemoBackend {
     return '00000000-0000-4000-8000-$serial';
   }
 
-  DateTime _now() => DateTime.now().toUtc();
+  DateTime _now() => _clock().toUtc();
 
   /// Horodatage strictement croissant : l'ordre des événements en dépend,
   /// comme `created_at` côté serveur.
@@ -106,9 +110,12 @@ class DemoBackend {
         'state': null,
         'session_exists': false,
         'lineup': compositionSnapshot(),
+        'pilot_active': false,
+        'pilot_is_me': false,
       };
     }
     final trueElapsed = _trueElapsed(session);
+    final pilotActive = _pilotActive(session);
     return {
       'match_id': demoMatchId,
       'state': session.state,
@@ -129,7 +136,27 @@ class DemoBackend {
       'lineup': compositionSnapshot(),
       'events': [for (final event in _sortedEvents()) _eventJson(event)],
       'substitute_counts': _substituteCounts(session),
+      'pilot_active': pilotActive,
+      'pilot_is_me': pilotActive && session.pilot == _PilotHolder.me,
     };
+  }
+
+  /// Même règle que `public.get_match_live_state` : un pilote compte tant que
+  /// le match n'est pas terminé et qu'il a donné signe de vie depuis moins
+  /// d'une minute. L'autre coach simulé reste actif jusqu'à ce que le menu
+  /// le retire.
+  bool _pilotActive(_Session session) {
+    if (session.state == 'finished') return false;
+    switch (session.pilot) {
+      case _PilotHolder.nobody:
+        return false;
+      case _PilotHolder.other:
+        return true;
+      case _PilotHolder.me:
+        final heartbeat = session.pilotHeartbeatAt;
+        return heartbeat != null &&
+            !heartbeat.isBefore(_now().subtract(_pilotExpiry));
+    }
   }
 
   int _trueElapsed(_Session session) {
@@ -358,27 +385,130 @@ class DemoBackend {
 
   static int _clampDuration(int value) => value < 1 ? 1 : (value > 200 ? 200 : value);
 
-  Map<String, dynamic> openWorkspace(int? plannedDurationMinutes) {
-    final existing = _session;
-    if (existing != null && existing.state != 'not_started') {
+  // ---------------------------------------------------------------------------
+  // Place de pilote (`claim_match_live_pilot`, `take_over_match_live_pilot`,
+  // `heartbeat_match_live_pilot`, `release_match_live_pilot`)
+  // ---------------------------------------------------------------------------
+
+  static const Duration _pilotExpiry = Duration(seconds: 60);
+
+  /// Même garde que `private.require_match_live_pilot` : toute écriture du
+  /// Live est refusée si ce téléphone n'est pas le pilote actif.
+  void _requirePilot() {
+    final session = _session;
+    if (session == null) {
+      _fail('Prends la place de pilote avant de modifier le Live.', '42501');
+    }
+    final heartbeat = session.pilotHeartbeatAt;
+    if (session.pilot != _PilotHolder.me ||
+        heartbeat == null ||
+        heartbeat.isBefore(_now().subtract(_pilotExpiry))) {
+      _fail('Tu ne pilotes pas ce Live.', '42501');
+    }
+  }
+
+  void _takePilotPlace(_Session session) {
+    session
+      ..pilot = _PilotHolder.me
+      ..pilotHeartbeatAt = _now();
+  }
+
+  /// Le premier coach qui ouvre « Piloter » crée l'espace de travail puis
+  /// prend la place. Si un autre coach la tient encore, l'état est renvoyé
+  /// tel quel : l'écran propose alors « Prendre la main ».
+  Map<String, dynamic> claimPilot(int? plannedDurationMinutes) {
+    final session = _session ?? _createWorkspace(plannedDurationMinutes);
+    if (session.pilot == _PilotHolder.other && _pilotActive(session)) {
       return liveSnapshot();
     }
-    if (existing != null) {
-      existing.plannedDurationMinutes = _clampDuration(
-        plannedDurationMinutes ?? existing.plannedDurationMinutes,
-      );
-      return _changed();
+    _takePilotPlace(session);
+    return _changed();
+  }
+
+  /// Prise de main volontaire, après confirmation dans l'écran.
+  Map<String, dynamic> takeOverPilot() {
+    final session = _session ?? _createWorkspace(null);
+    _takePilotPlace(session);
+    return _changed();
+  }
+
+  /// Signe de vie du pilote. Sans effet si la place a déjà expiré ou a été
+  /// reprise par un autre coach.
+  Map<String, dynamic> heartbeatPilot() {
+    final session = _session;
+    if (session != null &&
+        session.pilot == _PilotHolder.me &&
+        _pilotActive(session)) {
+      session.pilotHeartbeatAt = _now();
     }
-    _session = _Session(
+    return liveSnapshot();
+  }
+
+  /// Libère la place si ce téléphone la détient encore.
+  Map<String, dynamic> releasePilot() {
+    final session = _session;
+    if (session == null || session.pilot != _PilotHolder.me) {
+      return liveSnapshot();
+    }
+    session
+      ..pilot = _PilotHolder.nobody
+      ..pilotHeartbeatAt = null;
+    return _changed();
+  }
+
+  /// Démo uniquement : un autre coach prend ou rend la place. Prendre la
+  /// place retire immédiatement la main à ce téléphone, comme une prise de
+  /// main depuis un second téléphone.
+  bool get otherCoachPilots {
+    final session = _session;
+    return session != null &&
+        session.pilot == _PilotHolder.other &&
+        _pilotActive(session);
+  }
+
+  void simulateOtherCoachPilot({required bool active}) {
+    if (active) {
+      final session = _session ?? _createWorkspace(null);
+      session
+        ..pilot = _PilotHolder.other
+        ..pilotHeartbeatAt = _now();
+    } else {
+      final session = _session;
+      if (session == null || session.pilot != _PilotHolder.other) return;
+      session
+        ..pilot = _PilotHolder.nobody
+        ..pilotHeartbeatAt = null;
+    }
+    _changes.add(null);
+  }
+
+  _Session _createWorkspace(int? plannedDurationMinutes) {
+    final session = _Session(
       plannedDurationMinutes: _clampDuration(
         plannedDurationMinutes ?? demoPlannedDurationMinutes,
       ),
     );
+    _session = session;
     _compositionModifiedAt = _now();
+    return session;
+  }
+
+  Map<String, dynamic> openWorkspace(int? plannedDurationMinutes) {
+    // La place de pilote garantit qu'une session existe déjà : c'est
+    // claimPilot qui l'a créée.
+    _requirePilot();
+    final existing = _session!;
+    if (existing.state != 'not_started') {
+      return liveSnapshot();
+    }
+    existing.plannedDurationMinutes = _clampDuration(
+      plannedDurationMinutes ?? existing.plannedDurationMinutes,
+    );
     return _changed();
   }
 
   Map<String, dynamic> confirmStart() {
+    _requirePilot();
     final session = _requireSession(
       'Open the live workspace before starting the match',
     );
@@ -415,6 +545,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> setClockState(String action) {
+    _requirePilot();
     if (!const {'pause', 'resume', 'halftime', 'resume_second_half'}
         .contains(action)) {
       _fail('Invalid clock action');
@@ -461,6 +592,7 @@ class DemoBackend {
     required String operationId,
     String? scorerParticipantId,
   }) {
+    _requirePilot();
     if (team != 'us' && team != 'them') _fail('Invalid team');
     if (delta != 1 && delta != -1) _fail('Score delta must be -1 or 1');
     // Même garde-fou que le registre serveur : un renvoi de la même
@@ -522,6 +654,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> addLivePlayers(List<Map<String, dynamic>> players) {
+    _requirePilot();
     if (players.isEmpty || players.length > 30) {
       _fail('Players must be a non-empty JSON array of at most 30 items');
     }
@@ -644,6 +777,7 @@ class DemoBackend {
     List<({String playerIn, String playerOut})> substitutions = const [],
     String? formationCode,
   }) {
+    _requirePilot();
     final session = _requireSession('Live session not found');
     if (expectedLineupRevision < 0) {
       _fail('Expected lineup revision is required');
@@ -794,6 +928,7 @@ class DemoBackend {
     required List<Map<String, dynamic>> entries,
     required int expectedLineupRevision,
   }) {
+    _requirePilot();
     final code = formationCode.trim();
     if (code.isEmpty || code.length > 32) _fail('Invalid formation code');
     return saveLiveLineup(
@@ -804,6 +939,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> deleteEvent(String eventId) {
+    _requirePilot();
     final session = _session;
     if (session == null ||
         !const {'running', 'paused', 'halftime', 'finished'}
@@ -841,6 +977,7 @@ class DemoBackend {
     bool isOpponentOwnGoal = false,
     String? assistParticipantId,
   }) {
+    _requirePilot();
     if (isOpponentOwnGoal && scorerParticipantId != null) {
       _fail('An own goal cannot be credited to a player');
     }
@@ -880,6 +1017,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> endMatch() {
+    _requirePilot();
     final session = _session;
     if (session == null ||
         !const {'running', 'paused', 'halftime'}.contains(session.state)) {
@@ -908,6 +1046,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> restartSession() {
+    _requirePilot();
     final session = _requireSession();
     if (session.exported) _fail('This match has already been exported');
     if (session.state == 'not_started') {
@@ -1337,9 +1476,16 @@ String? _blankToNull(String? value) {
 
 int _nonNegative(int value) => value < 0 ? 0 : value;
 
+/// Qui tient la place de pilote (`match_live_sessions.pilot_*` en production).
+/// La démo ne connaît qu'un téléphone : celui-ci, ou un autre coach simulé
+/// depuis le menu du bandeau.
+enum _PilotHolder { nobody, me, other }
+
 class _Session {
   _Session({required this.plannedDurationMinutes});
 
+  _PilotHolder pilot = _PilotHolder.nobody;
+  DateTime? pilotHeartbeatAt;
   String state = 'not_started';
   int plannedDurationMinutes;
   int half = 1;

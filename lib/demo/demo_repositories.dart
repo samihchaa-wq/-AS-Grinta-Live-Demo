@@ -45,6 +45,25 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
       );
 
   @override
+  Future<MatchLiveStateBundle> claimPilot({
+    required String matchId,
+    int? plannedDurationMinutes,
+  }) =>
+      _bundle(() => _backend.claimPilot(plannedDurationMinutes));
+
+  @override
+  Future<MatchLiveStateBundle> takeOverPilot({required String matchId}) =>
+      _bundle(_backend.takeOverPilot);
+
+  @override
+  Future<MatchLiveStateBundle> heartbeatPilot({required String matchId}) =>
+      _bundle(_backend.heartbeatPilot);
+
+  @override
+  Future<MatchLiveStateBundle> releasePilot({required String matchId}) =>
+      _bundle(_backend.releasePilot);
+
+  @override
   Future<MatchLiveStateBundle> openWorkspace({
     required String matchId,
     int? plannedDurationMinutes,

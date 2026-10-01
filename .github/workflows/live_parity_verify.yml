@@ -8,6 +8,10 @@ on:
       - 'test/live_visual_snapshot_test.dart'
       - '.github/workflows/live_parity_verify.yml'
   workflow_dispatch:
+  # L'application évolue sans prévenir la démo : une vérification quotidienne
+  # signale tout écart dès le lendemain.
+  schedule:
+    - cron: '23 5 * * *'
 
 permissions:
   contents: read
@@ -26,7 +30,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: samihchaa-wq/AS-Grinta
-          ref: claude/live-pilote-spectateur
+          # La version en production de l'application.
+          ref: main
           path: app
 
       - name: Setup Flutter
@@ -99,10 +104,29 @@ jobs:
             03_halftime_spectator.png
             04_same_minute_salvos_pilot.png
             05_finished.png
+            06_pilot_place_available.png
+            07_someone_else_pilots.png
+            08_take_over_dialog.png
+            09_pre_kickoff_pilot.png
+            10_running_paused_pilot.png
+            11_player_view.png
           )
+          # Aucune capture en plus ou en moins d'un côté comme de l'autre.
+          diff <(ls snapshots-demo) <(ls snapshots-app)
+          test "$(ls snapshots-demo | wc -l)" -eq "${#expected[@]}"
           for file in "${expected[@]}"; do
             test -f "snapshots-demo/$file"
             test -f "snapshots-app/$file"
             cmp "snapshots-demo/$file" "snapshots-app/$file"
             echo "Identical: $file"
           done
+
+      - name: Keep the rendered screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-parity-snapshots
+          path: |
+            snapshots-demo
+            snapshots-app
+          if-no-files-found: warn
