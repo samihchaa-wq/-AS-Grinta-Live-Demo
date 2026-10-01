@@ -139,18 +139,29 @@ Future<void> _capture(
   final boundary = tester.renderObject<RenderRepaintBoundary>(
     find.byKey(_boundaryKey),
   );
-  final image = await boundary.toImage(pixelRatio: 1);
-  final data = await image.toByteData(format: ui.ImageByteFormat.png);
-  expect(data, isNotNull);
 
-  final output = Platform.environment['SNAPSHOT_DIR'] ??
-      '${Directory.current.path}/build/live_snapshots';
-  final directory = Directory(output)..createSync(recursive: true);
-  await File('${directory.path}/$name.png').writeAsBytes(
-    data!.buffer.asUint8List(),
-    flush: true,
-  );
-  image.dispose();
+  await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) {
+        throw StateError('Impossible de générer la capture Live.');
+      }
+
+      final output = Platform.environment['SNAPSHOT_DIR'] ??
+          '${Directory.current.path}/build/live_snapshots';
+      final directory = Directory(output)..createSync(recursive: true);
+      await File('${directory.path}/$name.png').writeAsBytes(
+        data.buffer.asUint8List(),
+        flush: true,
+      );
+    } finally {
+      image.dispose();
+    }
+  });
+
+  await tester.pumpWidget(const SizedBox.shrink());
+  await tester.pump();
 }
 
 class _SnapshotApp extends StatelessWidget {
