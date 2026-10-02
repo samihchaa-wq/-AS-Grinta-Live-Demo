@@ -10,6 +10,10 @@ s'entraîner sans rien toucher.
   appel réseau vers Supabase (Content-Security-Policy de `web/index.html`).
 - **Rien n'est enregistré.** Tout repart de zéro au rechargement de la page ou
   avec le bouton « Recommencer » du bandeau jaune.
+- **Place de pilote** : comme dans l'application, un seul téléphone pilote à
+  la fois et c'est le faux serveur qui tient la place (libérée en quittant
+  « Piloter », en fin de match, ou après une minute sans signe de vie). Le
+  menu « Un autre coach pilote » du bandeau jaune simule un second téléphone.
 - **Joueurs** : effectif et composition publiée du match AS Grinta –
   Toulouse Métropole du 28/09/2026 (`lib/demo/demo_fixture.dart`), sans les
   photos de profil (privées).

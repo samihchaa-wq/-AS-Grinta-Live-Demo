@@ -62,9 +62,7 @@ class DemoMatchPage extends ConsumerWidget {
     if (!confirmed) return;
     ref.read(demoBackendProvider).reset();
     ref.invalidate(matchLiveStateProvider(matchId));
-    ref
-      ..invalidate(livePilotProvider(matchId))
-      ..invalidate(liveViewModeProvider(matchId));
+    ref.invalidate(liveViewModeProvider(matchId));
     ref.read(_demoRunProvider.notifier).state++;
   }
 
@@ -193,7 +191,7 @@ class _DemoBanner extends StatelessWidget {
   }
 }
 
-/// Démo : simuler un autre coach ou la vue d'un joueur, impossibles à
+/// Démo : simuler un autre téléphone qui pilote ou la vue d'un joueur, impossibles à
 /// reproduire autrement sur un seul téléphone.
 class _DemoSimulationMenu extends ConsumerWidget {
   const _DemoSimulationMenu();
@@ -201,6 +199,7 @@ class _DemoSimulationMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     const matchId = DemoMatchPage.matchId;
+    // La place de pilote est tenue par le faux serveur, comme dans l'appli.
     final otherPilots =
         ref.watch(livePilotProvider(matchId)) == LivePilot.other;
     final asCoach = ref.watch(demoViewAsCoachProvider);
@@ -210,8 +209,7 @@ class _DemoSimulationMenu extends ConsumerWidget {
       onSelected: (value) {
         switch (value) {
           case 'other':
-            ref.read(livePilotProvider(matchId).notifier).state =
-                otherPilots ? LivePilot.nobody : LivePilot.other;
+            ref.read(demoBackendProvider).simulateOtherPilot(!otherPilots);
           case 'player':
             ref.read(demoViewAsCoachProvider.notifier).state = !asCoach;
         }

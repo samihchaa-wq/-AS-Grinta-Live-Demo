@@ -161,7 +161,9 @@ Future<void> _capture(
   });
 
   await tester.pumpWidget(const SizedBox.shrink());
-  await tester.pump();
+  // En quittant l'écran, le pilote libère sa place auprès du faux serveur :
+  // on laisse cette dernière requête se terminer.
+  await tester.pump(const Duration(seconds: 1));
 }
 
 class _SnapshotApp extends StatelessWidget {

@@ -29,6 +29,12 @@ class DemoBackend {
   late DateTime? _publishedAt;
   late DateTime _compositionModifiedAt;
   late _Report _report;
+
+  /// Place de pilote, comme les colonnes `pilot_*` de match_live_sessions.
+  /// « me » : ce téléphone ; « other » : le coach simulé par le menu de la
+  /// démo, qui donne signe de vie tant que la simulation est cochée.
+  _Pilot? _pilot;
+  DateTime? _pilotHeartbeatAt;
   int _nextId = 1;
   DateTime _lastEventAt = DateTime.utc(2000);
 
@@ -67,6 +73,8 @@ class DemoBackend {
     _publishedAt = DateTime.utc(2026, 9, 27, 14, 43, 10);
     _compositionModifiedAt = _publishedAt!;
     _report = _Report();
+    _pilot = null;
+    _pilotHeartbeatAt = null;
     _nextId = 1;
     _changes.add(null);
   }
@@ -106,6 +114,8 @@ class DemoBackend {
         'state': null,
         'session_exists': false,
         'lineup': compositionSnapshot(),
+        'pilot_active': false,
+        'pilot_is_me': false,
       };
     }
     final trueElapsed = _trueElapsed(session);
@@ -129,7 +139,98 @@ class DemoBackend {
       'lineup': compositionSnapshot(),
       'events': [for (final event in _sortedEvents()) _eventJson(event)],
       'substitute_counts': _substituteCounts(session),
+      'pilot_active': _pilotActive(session),
+      'pilot_is_me': _pilotActive(session) && _pilot == _Pilot.me,
     };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Place de pilote (claim/take_over/heartbeat/release_match_live_pilot)
+  // ---------------------------------------------------------------------------
+
+  /// Sans signe de vie depuis une minute, la place est considérée libre.
+  static const _pilotTimeout = Duration(seconds: 60);
+
+  bool _pilotActive(_Session session) {
+    if (session.state == 'finished' || _pilot == null) return false;
+    if (_pilot == _Pilot.other) return true;
+    final heartbeat = _pilotHeartbeatAt;
+    return heartbeat != null &&
+        !heartbeat.isBefore(_now().subtract(_pilotTimeout));
+  }
+
+  void _setPilot(_Pilot? pilot) {
+    _pilot = pilot;
+    _pilotHeartbeatAt = pilot == null ? null : _now();
+  }
+
+  /// Équivalent de private.require_match_live_pilot : toute écriture du Live
+  /// est refusée à un téléphone qui ne pilote pas.
+  void requirePilot() {
+    final session = _session;
+    if (session == null) {
+      _fail('Prends la place de pilote avant de modifier le Live.', '42501');
+    }
+    if (_pilot != _Pilot.me || !_pilotActive(session)) {
+      _fail('Tu ne pilotes pas ce Live.', '42501');
+    }
+  }
+
+  void _ensureWorkspace(int? plannedDurationMinutes) {
+    if (_session != null) return;
+    _session = _Session(
+      plannedDurationMinutes: _clampDuration(
+        plannedDurationMinutes ?? demoPlannedDurationMinutes,
+      ),
+    );
+    _compositionModifiedAt = _now();
+  }
+
+  /// Prend la place si elle est libre ; sinon renvoie l'état sans la voler.
+  Map<String, dynamic> claimPilot(int? plannedDurationMinutes) {
+    _ensureWorkspace(plannedDurationMinutes);
+    final session = _session!;
+    if (_pilot == _Pilot.other && _pilotActive(session)) return liveSnapshot();
+    _setPilot(_Pilot.me);
+    return _changed();
+  }
+
+  /// « Prendre la main » après confirmation.
+  Map<String, dynamic> takeOverPilot() {
+    _ensureWorkspace(null);
+    _setPilot(_Pilot.me);
+    return _changed();
+  }
+
+  Map<String, dynamic> heartbeatPilot() {
+    final session = _session;
+    if (session != null && _pilot == _Pilot.me && _pilotActive(session)) {
+      _pilotHeartbeatAt = _now();
+    }
+    return liveSnapshot();
+  }
+
+  Map<String, dynamic> releasePilot() {
+    if (_pilot != _Pilot.me) return liveSnapshot();
+    _setPilot(null);
+    return _changed();
+  }
+
+  bool get otherPilotSimulated {
+    final session = _session;
+    return session != null && _pilot == _Pilot.other && _pilotActive(session);
+  }
+
+  /// Menu de la démo : un autre téléphone prend la place (comme s'il avait
+  /// appuyé sur « Prendre la main »), ou la quitte.
+  void simulateOtherPilot(bool active) {
+    if (active) {
+      _ensureWorkspace(null);
+      _setPilot(_Pilot.other);
+    } else if (_pilot == _Pilot.other) {
+      _setPilot(null);
+    }
+    _changes.add(null);
   }
 
   int _trueElapsed(_Session session) {
@@ -146,9 +247,9 @@ class DemoBackend {
   /// Ordre d'enregistrement ; à heure égale (même validation), ordre de
   /// création, les identifiants étant attribués dans l'ordre.
   List<_Event> _sortedEvents() => [..._events]..sort((a, b) {
-        final byTime = a.createdAt.compareTo(b.createdAt);
-        return byTime != 0 ? byTime : a.id.compareTo(b.id);
-      });
+      final byTime = a.createdAt.compareTo(b.createdAt);
+      return byTime != 0 ? byTime : a.id.compareTo(b.id);
+    });
 
   Map<String, dynamic> _eventJson(_Event event) {
     return {
@@ -173,9 +274,8 @@ class DemoBackend {
 
   /// Nom affiché dans le journal : un invité ne porte que son prénom.
   String? _eventName(String? participantId) {
-    final participant = participantId == null
-        ? null
-        : _participants[participantId];
+    final participant =
+        participantId == null ? null : _participants[participantId];
     if (participant == null) return null;
     if (participant.isGuest) return '${participant.guestFirstName} (Invité)';
     return participant.displayName;
@@ -274,13 +374,14 @@ class DemoBackend {
     bool onSheet(_Participant? p) =>
         p != null && (p.zone == 'field' || p.zone == 'bench');
 
-    final roster = _participants.values
-        .where((p) => !p.isGuest && !onSheet(p))
-        .toList()
-      ..sort((a, b) {
-        final byName = a.sortName.compareTo(b.sortName);
-        return byName != 0 ? byName : a.seasonPlayerId!.compareTo(b.seasonPlayerId!);
-      });
+    final roster =
+        _participants.values.where((p) => !p.isGuest && !onSheet(p)).toList()
+          ..sort((a, b) {
+            final byName = a.sortName.compareTo(b.sortName);
+            return byName != 0
+                ? byName
+                : a.seasonPlayerId!.compareTo(b.seasonPlayerId!);
+          });
 
     final guests = <Map<String, dynamic>>[];
     for (final guest in demoGuests) {
@@ -289,7 +390,8 @@ class DemoBackend {
       guests.add({
         'participant_id': participant?.id,
         'guest_player_id': guest.guestPlayerId,
-        'display_name': '${_joinName(guest.firstName, guest.lastName)} (Invité)',
+        'display_name':
+            '${_joinName(guest.firstName, guest.lastName)} (Invité)',
         'last_initial': _initial(guest.lastName),
         'photo_url': null,
         'is_goalkeeper': guest.isGoalkeeper,
@@ -345,7 +447,8 @@ class DemoBackend {
   // Écritures du Live
   // ---------------------------------------------------------------------------
 
-  _Session _requireSession([String message = 'No live session for this match']) {
+  _Session _requireSession(
+      [String message = 'No live session for this match']) {
     final session = _session;
     if (session == null) _fail(message, 'P0002');
     return session;
@@ -356,7 +459,8 @@ class DemoBackend {
     return liveSnapshot();
   }
 
-  static int _clampDuration(int value) => value < 1 ? 1 : (value > 200 ? 200 : value);
+  static int _clampDuration(int value) =>
+      value < 1 ? 1 : (value > 200 ? 200 : value);
 
   Map<String, dynamic> openWorkspace(int? plannedDurationMinutes) {
     final existing = _session;
@@ -390,7 +494,8 @@ class DemoBackend {
     if (onSheet.any((p) => p.convocationStatus != 'convoked')) {
       _fail('Live lineup is stale after a convocation change');
     }
-    final fieldCount = _participants.values.where((p) => p.zone == 'field').length;
+    final fieldCount =
+        _participants.values.where((p) => p.zone == 'field').length;
     if (fieldCount > 11) {
       _fail('A lineup cannot contain more than 11 starters');
     }
@@ -651,7 +756,7 @@ class DemoBackend {
     if (session.lineupRevision != expectedLineupRevision) {
       _fail(
         'La composition Live a été modifiée par un autre coach. '
-        'Recharge l\'état avant d\'enregistrer.',
+            'Recharge l\'état avant d\'enregistrer.',
         '40001',
       );
     }
@@ -818,7 +923,8 @@ class DemoBackend {
 
     if (event.type == 'goal_us') {
       for (final later in _events) {
-        if (later.type == 'goal_us' && later.createdAt.isAfter(event.createdAt)) {
+        if (later.type == 'goal_us' &&
+            later.createdAt.isAfter(event.createdAt)) {
           later.scoreAsGrintaAfter = (later.scoreAsGrintaAfter ?? 1) - 1;
         }
       }
@@ -890,6 +996,8 @@ class DemoBackend {
       ..state = 'finished'
       ..runningSince = null
       ..finishedAt = _now();
+    // Comme coach_end_match_live : la fin du match libère la place.
+    if (_pilot == _Pilot.me) _setPilot(null);
     return _changed();
   }
 
@@ -1120,8 +1228,8 @@ class DemoBackend {
     final startEntries = session?.startingEntries;
     final startZones = session?.startingZones;
     final liveStarted = session?.startedAt != null;
-    final hasPlacement = _participants.values
-        .any((p) => p.zone == 'field' || p.zone == 'bench');
+    final hasPlacement =
+        _participants.values.any((p) => p.zone == 'field' || p.zone == 'bench');
 
     final rows = <({_Participant p, String zone, bool kickoff})>[];
     for (final participant in _participants.values) {
@@ -1190,8 +1298,7 @@ class DemoBackend {
     String zone,
     bool kickoff,
   ) {
-    final start =
-        kickoff ? (_session?.startingEntries?[participant.id]) : null;
+    final start = kickoff ? (_session?.startingEntries?[participant.id]) : null;
     final useFinal = _report.isValidated;
     double? x;
     double? y;
@@ -1268,13 +1375,12 @@ class DemoBackend {
         ..finalY = (entry?['y'] as num?)?.toDouble()
         ..finalSortOrder = (entry?['sort_order'] as num?)?.toInt()
         ..finalGoals = goals
-            .where((g) => g.teamSide == 'as_grinta' && g.scorerId == participant.id)
+            .where((g) =>
+                g.teamSide == 'as_grinta' && g.scorerId == participant.id)
             .length
-        ..finalAssists =
-            goals.where((g) => g.assistId == participant.id).length
-        ..finalCleanSheet = participant.isGoalkeeper &&
-            zone == 'field' &&
-            scoreAdverse == 0;
+        ..finalAssists = goals.where((g) => g.assistId == participant.id).length
+        ..finalCleanSheet =
+            participant.isGoalkeeper && zone == 'field' && scoreAdverse == 0;
     }
 
     final now = _now();
@@ -1321,9 +1427,10 @@ class DemoBackend {
       ];
 }
 
-String _joinName(String first, String? last) =>
-    [first.trim(), if (last != null && last.trim().isNotEmpty) last.trim()]
-        .join(' ');
+String _joinName(String first, String? last) => [
+      first.trim(),
+      if (last != null && last.trim().isNotEmpty) last.trim()
+    ].join(' ');
 
 String? _initial(String? lastName) {
   final text = lastName?.trim() ?? '';
@@ -1336,6 +1443,8 @@ String? _blankToNull(String? value) {
 }
 
 int _nonNegative(int value) => value < 0 ? 0 : value;
+
+enum _Pilot { me, other }
 
 class _Session {
   _Session({required this.plannedDurationMinutes});

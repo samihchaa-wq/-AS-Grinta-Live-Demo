@@ -31,6 +31,15 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
   ) =>
       _reply(() => MatchLiveStateBundle.fromRpc(action()));
 
+  /// Écriture réservée au téléphone pilote, comme côté serveur.
+  Future<MatchLiveStateBundle> _pilotWrite(
+    Map<String, dynamic> Function() action,
+  ) =>
+      _bundle(() {
+        _backend.requirePilot();
+        return action();
+      });
+
   @override
   Future<MatchLiveStateBundle> fetchLiveState(String matchId) =>
       _bundle(_backend.liveSnapshot);
@@ -45,18 +54,37 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
       );
 
   @override
+  Future<MatchLiveStateBundle> claimPilot({
+    required String matchId,
+    int? plannedDurationMinutes,
+  }) =>
+      _bundle(() => _backend.claimPilot(plannedDurationMinutes));
+
+  @override
+  Future<MatchLiveStateBundle> takeOverPilot({required String matchId}) =>
+      _bundle(_backend.takeOverPilot);
+
+  @override
+  Future<MatchLiveStateBundle> heartbeatPilot({required String matchId}) =>
+      _bundle(_backend.heartbeatPilot);
+
+  @override
+  Future<MatchLiveStateBundle> releasePilot({required String matchId}) =>
+      _bundle(_backend.releasePilot);
+
+  @override
   Future<MatchLiveStateBundle> openWorkspace({
     required String matchId,
     int? plannedDurationMinutes,
   }) =>
-      _bundle(() => _backend.openWorkspace(plannedDurationMinutes));
+      _pilotWrite(() => _backend.openWorkspace(plannedDurationMinutes));
 
   @override
   Future<MatchLiveStateBundle> confirmStart({
     required String matchId,
     String? reason,
   }) =>
-      _bundle(_backend.confirmStart);
+      _pilotWrite(_backend.confirmStart);
 
   @override
   Future<MatchLiveStateBundle> setClockState({
@@ -64,7 +92,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required String action,
     String? reason,
   }) =>
-      _bundle(() => _backend.setClockState(action));
+      _pilotWrite(() => _backend.setClockState(action));
 
   @override
   Future<MatchLiveStateBundle> adjustScore({
@@ -74,7 +102,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required String operationId,
     String? scorerParticipantId,
   }) =>
-      _bundle(
+      _pilotWrite(
         () => _backend.adjustScore(
           team: team,
           delta: delta,
@@ -89,7 +117,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required List<MatchLiveAddPlayerRequest> players,
     String? reason,
   }) =>
-      _bundle(
+      _pilotWrite(
         () => _backend.addLivePlayers([
           for (final player in players) player.toRpcJson(),
         ]),
@@ -102,7 +130,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required int expectedLineupRevision,
     List<({String playerIn, String playerOut})> substitutions = const [],
   }) =>
-      _bundle(
+      _pilotWrite(
         () => _backend.saveLiveLineup(
           entries: entries,
           expectedLineupRevision: expectedLineupRevision,
@@ -117,7 +145,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required List<Map<String, dynamic>> entries,
     required int expectedLineupRevision,
   }) =>
-      _bundle(
+      _pilotWrite(
         () => _backend.changeLiveFormation(
           formationCode: formationCode,
           entries: entries,
@@ -130,7 +158,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required String matchId,
     required String eventId,
   }) =>
-      _bundle(() => _backend.deleteEvent(eventId));
+      _pilotWrite(() => _backend.deleteEvent(eventId));
 
   @override
   Future<MatchLiveStateBundle> setEventScorer({
@@ -140,7 +168,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     bool isOpponentOwnGoal = false,
     String? assistParticipantId,
   }) =>
-      _bundle(
+      _pilotWrite(
         () => _backend.setEventScorer(
           eventId: eventId,
           scorerParticipantId: scorerParticipantId,
@@ -154,7 +182,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required String matchId,
     String? reason,
   }) =>
-      _bundle(_backend.endMatch);
+      _pilotWrite(_backend.endMatch);
 
   @override
   Future<MatchLiveStateBundle> reopen({
@@ -168,7 +196,7 @@ class DemoMatchLiveRepository implements MatchLiveRepository {
     required String matchId,
     String? reason,
   }) =>
-      _bundle(_backend.restartSession);
+      _pilotWrite(_backend.restartSession);
 
   @override
   Future<SportMatchFinalization> publishRecap({
@@ -196,8 +224,7 @@ class DemoMatchSportReportRepository implements MatchSportReportRepository {
       _reply(() => MatchSportReport.fromRpc(_backend.sportReport()));
 
   @override
-  Future<List<MatchGoalAction>> fetchGoalActions(String matchId) =>
-      _reply(() {
+  Future<List<MatchGoalAction>> fetchGoalActions(String matchId) => _reply(() {
         final rows = _backend.storedGoalActions();
         return [
           for (var index = 0; index < rows.length; index += 1)
