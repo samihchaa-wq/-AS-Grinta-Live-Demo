@@ -1,0 +1,11 @@
+{
+  "name": "ASG · Démo Live",
+  "short_name": "Démo Live",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#041224",
+  "theme_color": "#041224",
+  "description": "Démo d'entraînement du Live AS Grinta : rien n'est enregistré.",
+  "orientation": "portrait-primary",
+  "icons": []
+}
