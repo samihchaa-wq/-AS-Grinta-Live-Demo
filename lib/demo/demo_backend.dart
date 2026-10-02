@@ -13,9 +13,12 @@ import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 /// sans aucune adaptation. Rien n'est jamais envoyé sur le réseau et tout
 /// repart de zéro au rechargement de la page.
 class DemoBackend {
-  DemoBackend() {
+  /// [clock] sert uniquement aux tests, pour simuler l'expiration du pilote.
+  DemoBackend({DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
     reset();
   }
+
+  final DateTime Function() _clock;
 
   final Map<String, _Participant> _participants = {};
   final List<_Event> _events = [];
@@ -84,7 +87,7 @@ class DemoBackend {
     return '00000000-0000-4000-8000-$serial';
   }
 
-  DateTime _now() => DateTime.now().toUtc();
+  DateTime _now() => _clock().toUtc();
 
   /// Horodatage strictement croissant : l'ordre des événements en dépend,
   /// comme `created_at` côté serveur.
@@ -166,7 +169,7 @@ class DemoBackend {
 
   /// Équivalent de private.require_match_live_pilot : toute écriture du Live
   /// est refusée à un téléphone qui ne pilote pas.
-  void requirePilot() {
+  void _requirePilot() {
     final session = _session;
     if (session == null) {
       _fail('Prends la place de pilote avant de modifier le Live.', '42501');
@@ -216,14 +219,14 @@ class DemoBackend {
     return _changed();
   }
 
-  bool get otherPilotSimulated {
+  bool get otherCoachPilots {
     final session = _session;
     return session != null && _pilot == _Pilot.other && _pilotActive(session);
   }
 
   /// Menu de la démo : un autre téléphone prend la place (comme s'il avait
   /// appuyé sur « Prendre la main »), ou la quitte.
-  void simulateOtherPilot(bool active) {
+  void simulateOtherCoachPilot({required bool active}) {
     if (active) {
       _ensureWorkspace(null);
       _setPilot(_Pilot.other);
@@ -463,6 +466,7 @@ class DemoBackend {
       value < 1 ? 1 : (value > 200 ? 200 : value);
 
   Map<String, dynamic> openWorkspace(int? plannedDurationMinutes) {
+    _requirePilot();
     final existing = _session;
     if (existing != null && existing.state != 'not_started') {
       return liveSnapshot();
@@ -483,6 +487,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> confirmStart() {
+    _requirePilot();
     final session = _requireSession(
       'Open the live workspace before starting the match',
     );
@@ -520,6 +525,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> setClockState(String action) {
+    _requirePilot();
     if (!const {'pause', 'resume', 'halftime', 'resume_second_half'}
         .contains(action)) {
       _fail('Invalid clock action');
@@ -566,6 +572,7 @@ class DemoBackend {
     required String operationId,
     String? scorerParticipantId,
   }) {
+    _requirePilot();
     if (team != 'us' && team != 'them') _fail('Invalid team');
     if (delta != 1 && delta != -1) _fail('Score delta must be -1 or 1');
     // Même garde-fou que le registre serveur : un renvoi de la même
@@ -627,6 +634,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> addLivePlayers(List<Map<String, dynamic>> players) {
+    _requirePilot();
     if (players.isEmpty || players.length > 30) {
       _fail('Players must be a non-empty JSON array of at most 30 items');
     }
@@ -749,6 +757,7 @@ class DemoBackend {
     List<({String playerIn, String playerOut})> substitutions = const [],
     String? formationCode,
   }) {
+    _requirePilot();
     final session = _requireSession('Live session not found');
     if (expectedLineupRevision < 0) {
       _fail('Expected lineup revision is required');
@@ -899,6 +908,7 @@ class DemoBackend {
     required List<Map<String, dynamic>> entries,
     required int expectedLineupRevision,
   }) {
+    _requirePilot();
     final code = formationCode.trim();
     if (code.isEmpty || code.length > 32) _fail('Invalid formation code');
     return saveLiveLineup(
@@ -909,6 +919,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> deleteEvent(String eventId) {
+    _requirePilot();
     final session = _session;
     if (session == null ||
         !const {'running', 'paused', 'halftime', 'finished'}
@@ -947,6 +958,7 @@ class DemoBackend {
     bool isOpponentOwnGoal = false,
     String? assistParticipantId,
   }) {
+    _requirePilot();
     if (isOpponentOwnGoal && scorerParticipantId != null) {
       _fail('An own goal cannot be credited to a player');
     }
@@ -986,6 +998,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> endMatch() {
+    _requirePilot();
     final session = _session;
     if (session == null ||
         !const {'running', 'paused', 'halftime'}.contains(session.state)) {
@@ -1016,6 +1029,7 @@ class DemoBackend {
   }
 
   Map<String, dynamic> restartSession() {
+    _requirePilot();
     final session = _requireSession();
     if (session.exported) _fail('This match has already been exported');
     if (session.state == 'not_started') {

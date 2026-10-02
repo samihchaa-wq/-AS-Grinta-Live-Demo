@@ -209,7 +209,9 @@ class _DemoSimulationMenu extends ConsumerWidget {
       onSelected: (value) {
         switch (value) {
           case 'other':
-            ref.read(demoBackendProvider).simulateOtherPilot(!otherPilots);
+            ref
+                .read(demoBackendProvider)
+                .simulateOtherCoachPilot(active: !otherPilots);
           case 'player':
             ref.read(demoViewAsCoachProvider.notifier).state = !asCoach;
         }
